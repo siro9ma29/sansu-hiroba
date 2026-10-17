@@ -1,0 +1,305 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>さんすう れんしゅうひろば</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+<style>
+  :root {
+    --bg: #fdf8f0;
+    --card: #ffffff;
+    --ink: #2d2a26;
+    --sub: #6b645b;
+    --line: #e8e0d4;
+    --g2: #f08a5d;
+    --g4: #3fa7d6;
+    --g5: #59c27a;
+    --accent: #ffcf56;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: "Hiragino Maru Gothic ProN", "BIZ UDPGothic", "Meiryo", sans-serif;
+    background: var(--bg);
+    color: var(--ink);
+    line-height: 1.6;
+  }
+  header {
+    background: var(--accent);
+    padding: 24px 16px 20px;
+    text-align: center;
+    border-bottom: 4px solid #f2b705;
+    position: relative;
+  }
+  header h1 { margin: 0; font-size: clamp(1.5rem, 5vw, 2.2rem); letter-spacing: .05em; }
+  header p { margin: 6px 0 0; color: #5a4a12; font-size: .95rem; }
+  .portal-qr {
+    margin-top: 12px;
+    border: 2px solid #5a4a12; background: #fff8e1; color: #5a4a12;
+    font: inherit; font-weight: bold; font-size: .9rem;
+    padding: 6px 14px; border-radius: 999px; cursor: pointer;
+  }
+
+  main { max-width: 1000px; margin: 0 auto; padding: 20px 16px 48px; }
+
+  .tabs { display: flex; gap: 8px; flex-wrap: wrap; justify-content: center; margin-bottom: 20px; }
+  .tab {
+    border: 2px solid var(--line); background: var(--card); color: var(--ink);
+    font: inherit; font-size: 1.05rem; font-weight: bold;
+    padding: 10px 20px; border-radius: 999px; cursor: pointer; min-height: 48px;
+  }
+  .tab[aria-pressed="true"] { background: var(--ink); color: #fff; border-color: var(--ink); }
+
+  .section-title {
+    display: flex; align-items: center; gap: 10px;
+    font-size: 1.3rem; margin: 28px 0 12px;
+  }
+  .section-title .badge {
+    color: #fff; padding: 2px 14px; border-radius: 999px; font-size: 1rem;
+  }
+
+  .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 14px; }
+  .card {
+    position: relative;
+    display: flex; flex-direction: column;
+    background: var(--card); border: 2px solid var(--line); border-radius: 16px;
+    border-top: 8px solid var(--c);
+    transition: transform .12s, box-shadow .12s;
+  }
+  .card:hover { transform: translateY(-3px); box-shadow: 0 6px 16px rgba(0,0,0,.08); }
+  .card-link {
+    display: flex; flex-direction: column; gap: 6px; flex: 1;
+    padding: 16px 16px 8px; text-decoration: none; color: inherit; border-radius: 12px;
+  }
+  .card-link:focus-visible { outline: 3px solid var(--c); outline-offset: 2px; }
+  .card .icon { font-size: 2.4rem; line-height: 1; }
+  .card .name { font-size: 1.15rem; font-weight: bold; }
+  .card .desc { font-size: .9rem; color: var(--sub); }
+  .card .unit { font-size: .8rem; color: var(--sub); margin-top: auto; }
+  .qr-btn {
+    margin: 0 12px 12px; align-self: flex-end;
+    display: inline-flex; align-items: center; gap: 6px;
+    border: 2px solid var(--c); background: #fff; color: var(--ink);
+    font: inherit; font-size: .85rem; font-weight: bold;
+    padding: 4px 12px; border-radius: 10px; cursor: pointer; min-height: 36px;
+  }
+  .qr-btn:hover { background: var(--c); color: #fff; }
+
+  .pick {
+    background: var(--card); border: 3px dashed var(--accent); border-radius: 16px;
+    padding: 14px 16px; display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
+  }
+  .pick strong { font-size: 1.05rem; }
+  .pick a { color: var(--ink); font-weight: bold; }
+
+  footer { text-align: center; color: var(--sub); font-size: .8rem; padding: 20px 16px 32px; }
+  .hidden { display: none !important; }
+
+  /* ===== QR 大画面表示 ===== */
+  .qr-overlay {
+    position: fixed; inset: 0; z-index: 100;
+    background: #fff;
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    gap: 2vh; padding: 3vh 16px; text-align: center;
+  }
+  .qr-overlay .qr-grade {
+    color: #fff; font-weight: bold; padding: .2em 1em; border-radius: 999px;
+    font-size: clamp(1rem, 3vh, 1.8rem);
+  }
+  .qr-overlay .qr-title {
+    margin: 0; font-size: clamp(1.6rem, 6vh, 3.6rem); line-height: 1.2;
+  }
+  .qr-overlay #qrBox { padding: 2vh; background: #fff; border: 6px solid var(--c, var(--ink)); border-radius: 20px; }
+  .qr-overlay #qrBox img, .qr-overlay #qrBox canvas { display: block; }
+  .qr-overlay .qr-guide { font-size: clamp(1rem, 3vh, 1.8rem); font-weight: bold; margin: 0; }
+  .qr-overlay .qr-url { font-size: clamp(.75rem, 1.8vh, 1rem); color: var(--sub); word-break: break-all; margin: 0; }
+  .qr-overlay .qr-warn { background: #fde2e1; color: #a12622; padding: 6px 12px; border-radius: 8px; font-size: .9rem; margin: 0; }
+  .qr-controls { position: absolute; top: 12px; right: 12px; display: flex; gap: 8px; }
+  .qr-controls button {
+    border: 2px solid var(--line); background: #fff; color: var(--ink);
+    font: inherit; font-weight: bold; font-size: 1rem;
+    padding: 8px 16px; border-radius: 12px; cursor: pointer; min-height: 44px;
+  }
+  .qr-controls .close { background: var(--ink); color: #fff; border-color: var(--ink); }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>🧮 さんすう れんしゅうひろば</h1>
+  <p>じぶんの学年をえらんで、れんしゅうしよう！</p>
+  <button class="portal-qr" id="portalQr" type="button">📱 このページのQRコード</button>
+</header>
+
+<main>
+  <div class="pick" id="pick"></div>
+
+  <div class="tabs" role="group" aria-label="学年でしぼりこむ" style="margin-top:20px">
+    <button class="tab" data-grade="all" aria-pressed="true">ぜんぶ</button>
+    <button class="tab" data-grade="2" aria-pressed="false">2年</button>
+    <button class="tab" data-grade="4" aria-pressed="false">4年</button>
+    <button class="tab" data-grade="5" aria-pressed="false">5年</button>
+  </div>
+
+  <div id="list"></div>
+</main>
+
+<footer>
+  さいごの こうしん：<span id="updated"></span>
+</footer>
+
+<!-- QR 大画面表示 -->
+<div class="qr-overlay hidden" id="qrOverlay" role="dialog" aria-modal="true" aria-labelledby="qrTitle">
+  <div class="qr-controls">
+    <button type="button" id="qrFull">⛶ 全画面</button>
+    <button type="button" class="close" id="qrClose">✕ とじる</button>
+  </div>
+  <span class="qr-grade" id="qrGrade"></span>
+  <h2 class="qr-title" id="qrTitle"></h2>
+  <div id="qrBox"></div>
+  <p class="qr-guide">📷 たんまつのカメラで よみとろう</p>
+  <p class="qr-url" id="qrUrl"></p>
+  <p class="qr-warn hidden" id="qrWarn">※ パソコン内のファイルを開いているため、このQRは児童の端末では開けません。GitHub Pagesの公開URLで開いてから表示してください。</p>
+</div>
+
+<script>
+/* ===== ここを編集すればアプリの追加・変更ができます ===== */
+const UPDATED = "2026年10月";
+
+// 各アプリは https://siro9ma29.github.io/<repo>/ で公開されています。
+// アプリを追加するときは、そのリポジトリ名を repo に書いて1行足すだけでOK。
+const BASE = "https://siro9ma29.github.io/";
+
+// きょうのおすすめ（アプリの repo 名を入れる。空 "" なら非表示）
+const PICK = "syosuten-idou";
+
+const APPS = [
+  { grade: 2, icon: "✖️", name: "九九チャレンジ",            unit: "かけ算九九",           desc: "九九をどんどんこたえて、じこベストをめざそう！", repo: "99-charenge" },
+
+  { grade: 4, icon: "📐", name: "分度器",                    unit: "角の大きさ",           desc: "分度器のめもりを正しく読む練習。",              repo: "bundoki" },
+  { grade: 4, icon: "🔟", name: "小数点のしくみ（10倍・1/10）", unit: "小数のしくみ",         desc: "10倍・1/10で小数点がどう動くか見てみよう。",     repo: "syosuten-idou" },
+  { grade: 4, icon: "📏", name: "小数のしくみ（数直線）",       unit: "小数のしくみ",         desc: "数直線のめもりから小数を読みとろう。",           repo: "syosu-sutyokusen" },
+  { grade: 4, icon: "≒",  name: "がい数",                    unit: "がい数とその計算",       desc: "四捨五入で、だいたいの数にする練習。",           repo: "gaisu" },
+  { grade: 4, icon: "➗", name: "わり算（わる数1けた）",       unit: "わり算の筆算",          desc: "1けたでわる筆算を、手じゅんどおりに。",          repo: "warizan" },
+  { grade: 4, icon: "➗", name: "わり算（わる数2けた以上）",    unit: "わり算の筆算",          desc: "かりの商をたてて、2けたでわる筆算にチャレンジ。", repo: "warizan2" },
+  { grade: 4, icon: "⚖️", name: "単位換算",                  unit: "かんたんな単位",         desc: "km・m・cm、kg・g などの単位をかえる練習。",      repo: "tanni-kansan" },
+
+  { grade: 5, icon: "🧺", name: "倍数コレクター",              unit: "倍数と約数",           desc: "倍数をみつけてあつめよう！",                    repo: "baisu-training" },
+  { grade: 5, icon: "🔢", name: "小数のわり算",               unit: "小数のわり算",          desc: "小数点をうつして、わり算の筆算をしよう。",        repo: "syosu-warizan" },
+];
+/* ===== 編集ここまで ===== */
+
+const COLORS = { 2: "var(--g2)", 4: "var(--g4)", 5: "var(--g5)" };
+
+function appUrl(a) {
+  return BASE + a.repo + "/";
+}
+
+function card(a, i) {
+  return `<div class="card" style="--c:${COLORS[a.grade] || "var(--accent)"}">
+    <a class="card-link" href="${appUrl(a)}">
+      <span class="icon" aria-hidden="true">${a.icon}</span>
+      <span class="name">${a.name}</span>
+      <span class="desc">${a.desc}</span>
+      <span class="unit">${a.grade}年・${a.unit}</span>
+    </a>
+    <button class="qr-btn" type="button" data-qr="${i}" aria-label="${a.name}のQRコードを表示">
+      <span aria-hidden="true">▦</span> QR
+    </button>
+  </div>`;
+}
+
+function render(grade) {
+  const grades = [...new Set(APPS.map(a => a.grade))].sort((x, y) => x - y);
+  document.getElementById("list").innerHTML = grades
+    .filter(g => grade === "all" || String(g) === grade)
+    .map(g => `
+      <h2 class="section-title"><span class="badge" style="background:${COLORS[g]}">${g}年</span>さんすう</h2>
+      <div class="grid">${APPS.map((a, i) => a.grade === g ? card(a, i) : "").join("")}</div>
+    `).join("");
+}
+
+/* ===== QR 表示 ===== */
+const overlay = document.getElementById("qrOverlay");
+const qrBox = document.getElementById("qrBox");
+let lastFocus = null;
+
+function showQr({ title, url, grade }) {
+  lastFocus = document.activeElement;
+  document.getElementById("qrTitle").textContent = title;
+  document.getElementById("qrUrl").textContent = url;
+  const g = document.getElementById("qrGrade");
+  if (grade) {
+    g.textContent = grade + "年";
+    g.style.background = COLORS[grade];
+    g.classList.remove("hidden");
+    overlay.style.setProperty("--c", COLORS[grade]);
+  } else {
+    g.classList.add("hidden");
+    overlay.style.setProperty("--c", "var(--ink)");
+  }
+  document.getElementById("qrWarn").classList.toggle("hidden", location.protocol !== "file:");
+
+  overlay.classList.remove("hidden");
+  qrBox.innerHTML = "";
+  // 画面サイズに合わせてできるだけ大きく
+  const size = Math.floor(Math.min(window.innerWidth * 0.8, window.innerHeight * 0.5));
+  if (typeof QRCode === "undefined") {
+    qrBox.textContent = "QRコードを作れませんでした（インターネット接続を確認してください）";
+  } else {
+    new QRCode(qrBox, { text: url, width: size, height: size, correctLevel: QRCode.CorrectLevel.M });
+  }
+  document.getElementById("qrClose").focus();
+}
+
+function closeQr() {
+  overlay.classList.add("hidden");
+  if (document.fullscreenElement) document.exitFullscreen();
+  if (lastFocus) lastFocus.focus();
+}
+
+document.getElementById("list").addEventListener("click", e => {
+  const btn = e.target.closest("[data-qr]");
+  if (!btn) return;
+  const a = APPS[+btn.dataset.qr];
+  showQr({ title: `${a.icon} ${a.name}`, url: appUrl(a), grade: a.grade });
+});
+
+document.getElementById("portalQr").addEventListener("click", () => {
+  showQr({ title: "🧮 さんすう れんしゅうひろば", url: new URL("./", location.href).href });
+});
+
+document.getElementById("qrClose").addEventListener("click", closeQr);
+document.getElementById("qrFull").addEventListener("click", () => {
+  if (document.fullscreenElement) document.exitFullscreen();
+  else if (overlay.requestFullscreen) overlay.requestFullscreen();
+});
+document.addEventListener("keydown", e => {
+  if (e.key === "Escape" && !overlay.classList.contains("hidden")) closeQr();
+});
+
+/* ===== 初期表示 ===== */
+document.querySelectorAll(".tab").forEach(btn => {
+  btn.addEventListener("click", () => {
+    document.querySelectorAll(".tab").forEach(b => b.setAttribute("aria-pressed", "false"));
+    btn.setAttribute("aria-pressed", "true");
+    render(btn.dataset.grade);
+  });
+});
+
+const pick = APPS.find(a => a.repo === PICK);
+const pickEl = document.getElementById("pick");
+if (pick) {
+  pickEl.innerHTML = `<span style="font-size:1.8rem">⭐</span>
+    <div><strong>きょうのおすすめ</strong><br>
+    <a href="${appUrl(pick)}">${pick.icon} ${pick.name}（${pick.grade}年）</a></div>`;
+} else {
+  pickEl.classList.add("hidden");
+}
+
+document.getElementById("updated").textContent = UPDATED;
+render("all");
+</script>
+</body>
+</html>
