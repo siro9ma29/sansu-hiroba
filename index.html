@@ -14,6 +14,7 @@
     --line: #e8e0d4;
     --g1: #e86fa0;
     --g2: #f08a5d;
+    --g3: #9a6fd8;
     --g4: #3fa7d6;
     --g5: #59c27a;
     --accent: #ffcf56;
@@ -140,6 +141,7 @@
     <button class="tab" data-grade="all" aria-pressed="true">ぜんぶ</button>
     <button class="tab" data-grade="1" aria-pressed="false">1年</button>
     <button class="tab" data-grade="2" aria-pressed="false">2年</button>
+    <button class="tab" data-grade="3" aria-pressed="false">3年</button>
     <button class="tab" data-grade="4" aria-pressed="false">4年</button>
     <button class="tab" data-grade="5" aria-pressed="false">5年</button>
   </div>
@@ -181,6 +183,8 @@ const APPS = [
 
   { grade: 2, icon: "✖️", name: "九九チャレンジ",            unit: "かけ算九九",           desc: "九九をどんどんこたえて、じこベストをめざそう！", repo: "99-charenge" },
 
+  { grade: 3, icon: "⚔️", name: "マス・モンスターズ",          unit: "かけ算のひっ算",        desc: "ひっ算をといて、モンスターにこうげき！くり上がりもしっかりれんしゅう。", repo: "kakezan-hissan" },
+
   { grade: 4, icon: "📐", name: "分度器",                    unit: "角の大きさ",           desc: "分度器のめもりを正しく読む練習。",              repo: "bundoki" },
   { grade: 4, icon: "🔟", name: "小数点のしくみ（10倍・1/10）", unit: "小数のしくみ",         desc: "10倍・1/10で小数点がどう動くか見てみよう。",     repo: "syosuten-idou" },
   { grade: 4, icon: "📏", name: "小数のしくみ（数直線）",       unit: "小数のしくみ",         desc: "数直線のめもりから小数を読みとろう。",           repo: "syosu-sutyokusen" },
@@ -195,7 +199,7 @@ const APPS = [
 ];
 /* ===== 編集ここまで ===== */
 
-const COLORS = { 1: "var(--g1)", 2: "var(--g2)", 4: "var(--g4)", 5: "var(--g5)" };
+const COLORS = { 1: "var(--g1)", 2: "var(--g2)", 3: "var(--g3)", 4: "var(--g4)", 5: "var(--g5)" };
 
 function appUrl(a) {
   return BASE + a.repo + "/";
