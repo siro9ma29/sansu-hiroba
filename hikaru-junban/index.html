@@ -38,6 +38,14 @@ h1{margin:0;font-size:clamp(26px,5vw,40px);letter-spacing:.08em}
 @keyframes breathe{50%{transform:scale(1.06)}}
 .homebar{position:fixed;bottom:16px;left:16px;right:16px;display:flex;justify-content:space-between;align-items:center}
 .round{width:64px;height:64px;border-radius:50%;border:none;background:#fff;font-size:30px;box-shadow:0 3px 0 var(--soft)}
+.modes{display:flex;gap:clamp(8px,2vw,16px)}
+.mode{border:4px solid transparent;background:#fff;border-radius:18px;padding:10px 10px 6px;box-shadow:0 3px 0 var(--soft);display:flex;flex-direction:column;align-items:center;gap:6px;transition:transform .1s}
+.mode.sel{border-color:var(--on);transform:scale(1.07);box-shadow:0 0 0 6px rgba(255,201,40,.3)}
+.mini{display:grid;gap:4px;width:clamp(56px,12vw,92px)}
+.mini i{aspect-ratio:1;border-radius:22%;background:var(--cell);box-shadow:inset 0 -3px 0 var(--cellEdge);display:flex;align-items:center;justify-content:center;font-style:normal;line-height:1}
+.stars{color:#f2b705;font-size:clamp(12px,2.6vw,20px);letter-spacing:-1px;line-height:1}
+.resStars{color:#f2b705;font-size:22px;text-align:center}
+@media (max-height:760px){ .logo{display:none} }
 #gear{width:44px;height:44px;font-size:22px;opacity:.55;background:transparent;box-shadow:none;position:relative}
 #gear .ring{position:absolute;inset:0;border-radius:50%;border:3px solid var(--ink);opacity:0;transform:scale(.6)}
 #gear.holding .ring{animation:hold 1s linear forwards}
@@ -117,6 +125,7 @@ h1{margin:0;font-size:clamp(26px,5vw,40px);letter-spacing:.08em}
   <div class="logo"><i class="l1"></i><i></i><i></i><i></i><i></i><i class="l2"></i><i></i><i class="l3"></i><i></i></div>
   <h1>ひかる じゅんばん</h1>
   <div class="animals" id="animals"></div>
+  <div class="modes" id="modes"></div>
   <button class="play" id="playBtn" aria-label="はじめる">
     <svg viewBox="0 0 10 12"><path d="M0 0 L10 6 L0 12 Z" fill="#fff"/></svg>
   </button>
@@ -158,7 +167,9 @@ h1{margin:0;font-size:clamp(26px,5vw,40px);letter-spacing:.08em}
 <!-- おとな向け（⚙を長押し） -->
 <div id="adult"><div class="panel">
   <h2>おとな向け：きろく</h2>
-  <div class="sm">レベルは10段階：2×2・絵ありで2こ→3こ→4こ、3×3・絵ありで3こ→4こ、3×3・絵なしで3こ→4こ→5こ→6こ→7こ。2回続けて正解で1つ上、まちがえると1つ下。1回のプレイは10問。結果画面のマスの数＝とどいたレベル。</div>
+  <div class="sm">ホーム画面でレベル（★の数）を選びます。<br>
+★ 2×2・絵あり（だんだん薄く）　★★ 2×2・絵なし　★★★ 3×3・絵あり（だんだん薄く）　★★★★ 3×3・絵なし<br>
+各レベルの中で、2回続けて正解すると1つ上の段階（光る数が増える／絵が薄くなる を交互に）、まちがえると1つ下。1回のプレイは10問。記録はレベルごと。</div>
   <table id="adultTable"></table>
   <div class="sm">記録はこの端末のブラウザ内（localStorage）にだけ保存されます。どうぶつごとに別の記録です。</div>
   <button class="close" id="adultClose">とじる</button>
@@ -171,14 +182,19 @@ h1{margin:0;font-size:clamp(26px,5vw,40px);letter-spacing:.08em}
 /* ===== 設定 ===== */
 const ANIMALS = ['🐶','🐱','🐰','🐻','🐼','🐸','🐧','🦁'];
 const ROUNDS = 10;          // 1プレイの問題数（約1.5〜3分）
-// レベル表：[マスの大きさ, 光る数]。3×3 に移るときは光る数を1つ戻す（マスと長さを同時に上げない）
-// [マス, 光る数, 絵あり]。絵は低いレベルの手がかり。絵を消すときも光る数を1つ戻す
-const LEVELS = [[2,2,1],[2,3,1],[2,4,1],[3,3,1],[3,4,1],[3,3,0],[3,4,0],[3,5,0],[3,6,0],[3,7,0]];
+// レベル（子どもが選ぶ）ごとのマスの大きさと、その中の段階 [光る数, 絵の濃さ]
+// 段階は「光る数」と「絵の濃さ」を交互に1つずつ変える（同時に難しくしない）
+const MODES = {
+  1: { g:2, steps:[[2,1],[3,1],[3,.6],[4,.6],[4,.3],[5,.3],[6,.3]] },   // 2×2・絵あり（だんだん薄く）
+  2: { g:2, steps:[[2,0],[3,0],[4,0],[5,0],[6,0]] },                    // 2×2・絵なし
+  3: { g:3, steps:[[3,1],[4,1],[4,.6],[5,.6],[5,.3],[6,.3],[7,.3]] },   // 3×3・絵あり（だんだん薄く）
+  4: { g:3, steps:[[3,0],[4,0],[5,0],[6,0],[7,0]] },                    // 3×3・絵なし
+};
 const PICS = ['🐶','🐱','🐰','🐻','🐼','🐸','🐧','🦁','🐷','🐵','🐔','🐮','🐯','🐨'];
-const UP_STREAK = 2;        // 2回続けて正解したら1つ上のレベルへ
-const lvLabel = l => l>0 ? `${LEVELS[l-1][0]}×${LEVELS[l-1][0]}・${LEVELS[l-1][1]}こ${LEVELS[l-1][2]?'・絵':''}` : '—';
+const UP_STREAK = 2;        // 2回続けて正解したら1つ上の段階へ
+const stepLabel = (m, k) => { if(!k) return '—'; const [n,op] = MODES[m].steps[k-1]; return `${n}こ` + (op>0 ? `・絵${Math.round(op*100)}%` : ''); };
 const LIGHT_MS = 750, GAP_MS = 400;
-const KEY = 'hikaru-junban-v3';
+const KEY = 'hikaru-junban-v4';
 
 /* ===== 保存 ===== */
 function load(){
@@ -187,7 +203,8 @@ function load(){
 }
 function save(){ try{ localStorage.setItem(KEY, JSON.stringify(store)); }catch(e){} }
 const store = load();
-function player(a){ return store.players[a] || (store.players[a] = { best:0, sessions:[], demoSeen:false }); }
+function player(a){ return store.players[a] || (store.players[a] = { mode:1, modes:{}, demoSeen:false }); }
+function rec(p, m){ return p.modes[m] || (p.modes[m] = { best:0, sessions:[] }); }
 const today = () => { const d = new Date(); return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); };
 
 /* ===== 音（オフラインで鳴るよう WebAudio で生成） ===== */
@@ -225,19 +242,36 @@ function renderHome(){
     b.addEventListener('pointerdown', () => { ensureAudio(); store.last = a; save(); renderHome(); beep(660,.12); });
     box.appendChild(b);
   });
+  // レベルえらび（★の数がレベル。絵ありは絵がだんだん薄くなるようすを表示）
+  const me = player(store.last), mb = $('modes'); mb.innerHTML = '';
+  [1,2,3,4].forEach(m=>{
+    const {g} = MODES[m], pic = (m===1||m===3);
+    const b = document.createElement('button');
+    b.className = 'mode' + (me.mode===m ? ' sel' : '');
+    b.setAttribute('aria-label', 'レベル'+m);
+    const fs = g===2 ? 'clamp(14px,2.8vw,20px)' : 'clamp(10px,1.8vw,13px)';
+    let tiles = '';
+    for(let k=0;k<g*g;k++){
+      const op = 1 - k/(g*g) * 0.8;
+      tiles += `<i>${pic ? `<span style="font-size:${fs};opacity:${op.toFixed(2)}">${PICS[k]}</span>` : ''}</i>`;
+    }
+    b.innerHTML = `<div class="mini" style="grid-template-columns:repeat(${g},1fr)">${tiles}</div><div class="stars">${'★'.repeat(m)}</div>`;
+    b.addEventListener('pointerdown', () => { ensureAudio(); me.mode = m; save(); renderHome(); beep(523+m*110,.12); });
+    mb.appendChild(b);
+  });
   $('soundBtn').textContent = store.sound ? '🔊' : '🔇';
 }
 
 /* ===== ゲーム本体 ===== */
 let runId = 0, size = 0, cells = [], seq = [], inputIdx = 0, phase = 'idle', inputResolve = null;
-let lv, span, okStreak, round, sessionBest, results;
+let mode, lv, span, okStreak, round, sessionBest, results;
 const sleep = ms => new Promise(r=>setTimeout(r,ms));
 async function wait(ms, id){ await sleep(ms); if(id !== runId) throw 'cancel'; }
 
-function setPics(on){
-  // 毎回ちがう動物をちがう場所に置く（配置をおぼえてしまわないように）
+function setPics(op){
+  // 毎回ちがう動物をちがう場所に置く（配置をおぼえてしまわないように）。op＝絵の濃さ
   const pool = PICS.slice().sort(()=>Math.random()-.5);
-  cells.forEach((c,i)=>{ c.innerHTML = on ? `<span class="pic">${pool[i]}</span>` : ''; });
+  cells.forEach((c,i)=>{ c.innerHTML = op>0 ? `<span class="pic" style="opacity:${op}">${pool[i]}</span>` : ''; });
 }
 function buildGrid(n){
   if(n === size) return;
@@ -264,8 +298,14 @@ function renderProg(){
   }
 }
 function makeSeq(len, n){
-  const pool = [...Array(n).keys()], s = [];
-  for(let k=0;k<len;k++){ const j = Math.floor(Math.random()*pool.length); s.push(pool.splice(j,1)[0]); }
+  const s = [];
+  if(len <= n){
+    const pool = [...Array(n).keys()];
+    for(let k=0;k<len;k++){ const j = Math.floor(Math.random()*pool.length); s.push(pool.splice(j,1)[0]); }
+  }else{
+    // マスより多く光るとき（2×2で5こ以上）は同じマスが再び光る。ただし続けては光らない
+    for(let k=0;k<len;k++){ let c; do{ c = Math.floor(Math.random()*n); }while(k>0 && c===s[k-1]); s.push(c); }
+  }
   return s;
 }
 async function lightCell(i, ms, id, cls='on'){
@@ -291,14 +331,15 @@ function onTap(i){
 
 async function demo(id){
   // お手本：2つ光る → 手が同じ順にタップ
-  buildGrid(2); setPics(true);
-  const d = [0, 3], hand = $('hand'), wrap = $('gridWrap');
+  const g = MODES[mode].g;
+  buildGrid(g); setPics(MODES[mode].steps[0][1]);
+  const d = g===2 ? [0, 3] : [0, 8], hand = $('hand'), wrap = $('gridWrap');
   setStatus('👀','pop'); await wait(700,id);
   for(const c of d){ await lightCell(c, LIGHT_MS, id); await wait(GAP_MS, id); }
   setStatus('👆','pop'); await wait(400,id);
   const pos = i => { const r = cells[i].getBoundingClientRect(), w = wrap.getBoundingClientRect();
     return [r.left - w.left + r.width*0.38, r.top - w.top + r.height*0.42]; };
-  const [sx,sy] = pos(2);
+  const [sx,sy] = pos(g===2 ? 2 : 6);
   hand.style.transition='none'; hand.style.transform=`translate(${sx}px,${sy+80}px)`; void hand.offsetWidth;
   hand.style.transition=''; hand.style.opacity = 1;
   try{
@@ -318,8 +359,8 @@ async function demo(id){
 }
 
 async function playRound(id){
-  const [g, n, pic] = LEVELS[lv-1]; span = n;
-  buildGrid(g); setPics(pic);
+  const g = MODES[mode].g, [n, op] = MODES[mode].steps[lv-1]; span = n;
+  buildGrid(g); setPics(op);
   seq = makeSeq(n, g*g);
   $('grid').classList.add('watch');
   setStatus('👀','pop'); await wait(750,id);
@@ -348,10 +389,11 @@ async function playRound(id){
 async function runGame(withDemo){
   const id = ++runId;
   const me = store.last, p = player(me);
-  const prev = p.sessions[p.sessions.length-1];
-  lv = prev ? Math.max(1, prev.s - 1) : 1;   // 前回とどいたレベルより1つやさしいところから
+  mode = p.mode || 1;
+  const r = rec(p, mode), prev = r.sessions[r.sessions.length-1];
+  lv = prev ? Math.max(1, prev.s - 1) : 1;   // このレベルで前回とどいた段階より1つやさしいところから
   okStreak = 0; sessionBest = 0; results = []; size = 0;
-  $('gameMe').textContent = me;
+  $('gameMe').innerHTML = `${me}<div class="stars">${'★'.repeat(mode)}</div>`;
   show('game'); renderProg(); setStatus('');
   try{
     if(withDemo || !p.demoSeen){ await demo(id); p.demoSeen = true; save(); }
@@ -362,7 +404,7 @@ async function runGame(withDemo){
       if(ok){
         sessionBest = Math.max(sessionBest, lv);
         okStreak++;
-        if(okStreak >= UP_STREAK){ lv = Math.min(LEVELS.length, lv+1); okStreak = 0; }
+        if(okStreak >= UP_STREAK){ lv = Math.min(MODES[mode].steps.length, lv+1); okStreak = 0; }
       }else{
         okStreak = 0;
         lv = Math.max(1, lv-1);   // まちがえたら1つやさしく
@@ -375,12 +417,12 @@ async function runGame(withDemo){
 }
 
 function finish(id, me){
-  const p = player(me), prevBest = p.best;
+  const p = rec(player(me), mode), prevBest = p.best;
   p.sessions.push({ d: today(), s: sessionBest });
   if(p.sessions.length > 60) p.sessions.splice(0, p.sessions.length-60);
   p.best = Math.max(p.best, sessionBest); save();
 
-  $('resMe').textContent = me;
+  $('resMe').innerHTML = `${me}<div class="resStars">${'★'.repeat(mode)}</div>`;
   const up = sessionBest > prevBest;
   const crown = $('crown'); crown.classList.remove('go');
   crown.textContent = up ? (prevBest > 0 ? '👑' : '🌟') : (sessionBest > 0 ? '😊' : '💪');
@@ -418,13 +460,16 @@ function goHome(){
 /* ===== おとな向けパネル ===== */
 function openAdult(){
   const t = $('adultTable');
-  let html = '<tr><th></th><th>プレイ回数</th><th>自己ベスト</th><th>前回</th><th>最終日</th><th></th></tr>';
+  let html = '<tr><th></th><th>レベル</th><th>回数</th><th>自己ベスト</th><th>前回</th><th>最終日</th><th></th></tr>';
   ANIMALS.forEach(a=>{
-    const p = store.players[a]; if(!p || !p.sessions.length) return;
-    const l = p.sessions[p.sessions.length-1];
-    html += `<tr><td>${a}</td><td>${p.sessions.length}</td><td>${lvLabel(p.best)}</td><td>${lvLabel(l.s)}</td><td>${l.d.slice(5)}</td><td><button data-reset="${a}">消す</button></td></tr>`;
+    const p = store.players[a]; if(!p) return;
+    [1,2,3,4].forEach(m=>{
+      const r = p.modes[m]; if(!r || !r.sessions.length) return;
+      const l = r.sessions[r.sessions.length-1];
+      html += `<tr><td>${a}</td><td>${m}</td><td>${r.sessions.length}</td><td>${stepLabel(m,r.best)}</td><td>${stepLabel(m,l.s)}</td><td>${l.d.slice(5)}</td><td><button data-reset="${a}">消す</button></td></tr>`;
+    });
   });
-  if(html.indexOf('<td>') < 0) html += '<tr><td colspan="6" class="sm">まだ記録がありません</td></tr>';
+  if(html.indexOf('<td>') < 0) html += '<tr><td colspan="7" class="sm">まだ記録がありません</td></tr>';
   t.innerHTML = html;
   t.querySelectorAll('[data-reset]').forEach(b=>b.addEventListener('click',()=>{
     if(confirm(b.dataset.reset+' の記録を消しますか？')){ delete store.players[b.dataset.reset]; save(); openAdult(); }
@@ -448,7 +493,7 @@ gear.addEventListener('pointerdown', e => { e.preventDefault(); gear.classList.a
 document.addEventListener('contextmenu', e => e.preventDefault());
 
 renderHome();
-window.__hj = { get seq(){ return seq; }, get phase(){ return phase; }, get lv(){ return lv; } }; // 動作確認用
+window.__hj = { get seq(){ return seq; }, get phase(){ return phase; }, get lv(){ return lv; }, get mode(){ return mode; } }; // 動作確認用
 })();
 </script>
 </body>
