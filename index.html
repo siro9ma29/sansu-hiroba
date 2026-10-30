@@ -12,6 +12,7 @@
     --ink: #2d2a26;
     --sub: #6b645b;
     --line: #e8e0d4;
+    --g0: #2bb5a5;
     --g1: #e86fa0;
     --g2: #f08a5d;
     --g3: #9a6fd8;
@@ -139,6 +140,7 @@
 
   <div class="tabs" role="group" aria-label="学年でしぼりこむ" style="margin-top:20px">
     <button class="tab" data-grade="all" aria-pressed="true">ぜんぶ</button>
+    <button class="tab" data-grade="0" aria-pressed="false">🧠 あたまのたいそう</button>
     <button class="tab" data-grade="1" aria-pressed="false">1年</button>
     <button class="tab" data-grade="2" aria-pressed="false">2年</button>
     <button class="tab" data-grade="3" aria-pressed="false">3年</button>
@@ -173,12 +175,16 @@ const UPDATED = "2026年10月";
 
 // 各アプリは https://siro9ma29.github.io/<repo>/ で公開されています。
 // アプリを追加するときは、そのリポジトリ名を repo に書いて1行足すだけでOK。
+// grade: 0 は「あたまのたいそう」（認知能力アプリ。5さい〜低学年、学年を問わない）。
+// このリポジトリ内のフォルダに置いたアプリは repo に "sansu-hiroba/フォルダ名" と書く。
 const BASE = "https://siro9ma29.github.io/";
 
 // きょうのおすすめ（アプリの repo 名を入れる。空 "" なら非表示）
 const PICK = "syosuten-idou";
 
 const APPS = [
+  { grade: 0, icon: "💡", name: "ひかる じゅんばん",          unit: "おぼえる ちから",        desc: "ひかった じゅんばんに タッチしよう！どうぶつの えが ヒントだよ。", repo: "sansu-hiroba/hikaru-junban" },
+
   { grade: 1, icon: "➕", name: "たすひくチャレンジ",          unit: "たし算・ひき算",        desc: "5・10のごうせいから、くりあがり・くりさがりまで。バッヂをあつめよう！", repo: "tasuhiku-challenge" },
 
   { grade: 2, icon: "✖️", name: "九九チャレンジ",            unit: "かけ算九九",           desc: "九九をどんどんこたえて、じこベストをめざそう！", repo: "99-charenge" },
@@ -199,7 +205,7 @@ const APPS = [
 ];
 /* ===== 編集ここまで ===== */
 
-const COLORS = { 1: "var(--g1)", 2: "var(--g2)", 3: "var(--g3)", 4: "var(--g4)", 5: "var(--g5)" };
+const COLORS = { 0: "var(--g0)", 1: "var(--g1)", 2: "var(--g2)", 3: "var(--g3)", 4: "var(--g4)", 5: "var(--g5)" };
 
 function appUrl(a) {
   return BASE + a.repo + "/";
@@ -211,7 +217,7 @@ function card(a, i) {
       <span class="icon" aria-hidden="true">${a.icon}</span>
       <span class="name">${a.name}</span>
       <span class="desc">${a.desc}</span>
-      <span class="unit">${a.grade}年・${a.unit}</span>
+      <span class="unit">${a.grade === 0 ? "5さい〜" : a.grade + "年"}・${a.unit}</span>
     </a>
     <button class="qr-btn" type="button" data-qr="${i}" aria-label="${a.name}のQRコードを表示">
       <span aria-hidden="true">▦</span> QR
@@ -224,7 +230,7 @@ function render(grade) {
   document.getElementById("list").innerHTML = grades
     .filter(g => grade === "all" || String(g) === grade)
     .map(g => `
-      <h2 class="section-title"><span class="badge" style="background:${COLORS[g]}">${g}年</span>さんすう</h2>
+      <h2 class="section-title"><span class="badge" style="background:${COLORS[g]}">${g === 0 ? "5さい〜" : g + "年"}</span>${g === 0 ? "あたまのたいそう" : "さんすう"}</h2>
       <div class="grid">${APPS.map((a, i) => a.grade === g ? card(a, i) : "").join("")}</div>
     `).join("");
 }
