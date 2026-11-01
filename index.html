@@ -184,6 +184,7 @@ const PICK = "syosuten-idou";
 
 const APPS = [
   { grade: 0, icon: "💡", name: "ひかる じゅんばん",          unit: "おぼえる ちから",        desc: "ひかった じゅんばんに タッチしよう！どうぶつの えが ヒントだよ。", repo: "sansu-hiroba/hikaru-junban" },
+  { grade: 0, icon: "🍎", name: "どっちが おおい？",          unit: "かずの かん",            desc: "いちばん おおい くだものを パッと みて タッチしよう！", repo: "sansu-hiroba/dochi-ooi" },
 
   { grade: 1, icon: "➕", name: "たすひくチャレンジ",          unit: "たし算・ひき算",        desc: "5・10のごうせいから、くりあがり・くりさがりまで。バッヂをあつめよう！", repo: "tasuhiku-challenge" },
 
@@ -308,7 +309,7 @@ const pickEl = document.getElementById("pick");
 if (pick) {
   pickEl.innerHTML = `<span style="font-size:1.8rem">⭐</span>
     <div><strong>きょうのおすすめ</strong><br>
-    <a href="${appUrl(pick)}">${pick.icon} ${pick.name}（${pick.grade}年）</a></div>`;
+    <a href="${appUrl(pick)}">${pick.icon} ${pick.name}（${pick.grade === 0 ? "5さい〜" : pick.grade + "年"}）</a></div>`;
 } else {
   pickEl.classList.add("hidden");
 }
