@@ -18,11 +18,8 @@ button{font-family:inherit;border:none;cursor:pointer;color:inherit;background:n
 #gearBtn.pressing{transform:rotate(180deg) scale(1.2)}
 
 /* ホーム */
-.hero{font-size:min(8vh,58px);margin:0 0 1vh;letter-spacing:.08em}
-.animals{display:flex;flex-wrap:wrap;justify-content:center;gap:12px;max-width:820px;padding:0 12px}
-.animal{width:84px;height:84px;border-radius:22px;background:#fff;font-size:50px;box-shadow:0 4px 0 var(--shadow);opacity:.55}
-.animal.sel{opacity:1;outline:6px solid var(--yellow);transform:scale(1.06)}
-.levels{display:flex;flex-wrap:wrap;justify-content:center;gap:14px;margin:3vh 0 2vh;padding:0 12px}
+.hero{font-size:min(8vh,58px);margin:2vh 0 1vh;letter-spacing:.08em}
+.levels{display:flex;flex-wrap:wrap;justify-content:center;gap:14px;margin:4vh 0 3vh;padding:0 12px}
 .lvbtn{width:150px;padding:12px 8px 8px;border-radius:22px;background:#fff;box-shadow:0 4px 0 var(--shadow);opacity:.55;display:flex;flex-direction:column;align-items:center;gap:6px}
 .lvbtn.sel{opacity:1;outline:6px solid var(--yellow)}
 .mboard{position:relative;width:78px;height:78px;border-radius:12px;background:#fffdf8;box-shadow:inset 0 0 0 3px var(--rim)}
@@ -110,7 +107,6 @@ button{font-family:inherit;border:none;cursor:pointer;color:inherit;background:n
     <button id="gearBtn" class="iconbtn">⚙</button>
   </div>
   <div class="hero">🍎🍌🍎<br>🍌🍎🍎</div>
-  <div id="animals" class="animals"></div>
   <div id="levels" class="levels"></div>
   <button id="startBtn" class="start">▶</button>
 </section>
@@ -139,7 +135,7 @@ button{font-family:inherit;border:none;cursor:pointer;color:inherit;background:n
 <div id="adult" class="modal"><div class="panel">
   <button class="close" id="adultClose">✕</button>
   <h2>おとな向け：きろく</h2>
-  <p>記録はこの端末のブラウザ（localStorage）だけに保存されます。盤面に混ざって並んだくだもののうち、いちばん多い種類を選ぶ課題です。答えは盤面のくだものを直接タップします。段階は「いちばん多い種類：2番目の種類」の比・盤面のマス数・答えるまでの制限時間で表し、比が 1 に近いほど難しくなります。<br>
+  <p>記録はこの端末のブラウザ（localStorage）だけに、レベルごとに保存されます。盤面に混ざって並んだくだもののうち、いちばん多い種類を選ぶ課題です。答えは盤面のくだものを直接タップします。段階は「いちばん多い種類：2番目の種類」の比・盤面のマス数・答えるまでの制限時間で表し、比が 1 に近いほど難しくなります。<br>
   ★＝2種類・同じ大きさ・時間制限なし／★★＝2種類・種類ごとに大きさがちがう／★★★＝3種類／★★★★＝3種類・大きさちがい・マスにそろえずばらばらに配置。★★以上は上のバーがなくなるまでに答え、時間切れは「まちがい」と同じ扱い</p>
   <div id="adultTable"></div>
 </div></div>
@@ -149,7 +145,7 @@ button{font-family:inherit;border:none;cursor:pointer;color:inherit;background:n
 'use strict';
 // ---------- 設定 ----------
 const NQ = 12;   // 1プレイの問題数
-const ANIMALS = ['🐶','🐱','🐰','🐻','🐼','🦊','🐸','🐧'];
+const EATER = '🐻';   // くだものを食べるどうぶつ（選ぶ機能はなし）
 // 色が似ないように、色のグループから1つずつ選ぶ
 const FRUIT_GROUPS = [['🍎','🍓','🍒'],['🍌','🍋'],['🍊','🥕'],['🍇','🍆'],['🥝','🥦','🍈']];
 // stages: [よこ, たて, 2番目の比, いちばん多い比, 答えるまでの制限秒（null=制限なし）]
@@ -166,12 +162,25 @@ const LEVELS = [
 const DOT_COLORS=['#ef5b5b','#f5c400','#7cc35a'];
 
 // ---------- 保存 ----------
-const KEY = 'dochi-ooi-v3';
-let state = {sound:true, animal:3, level:0, demo:{}, rec:{}};
-try{ Object.assign(state, JSON.parse(localStorage.getItem(KEY)) || {}); }catch(e){}
+const KEY = 'dochi-ooi-v4';   // 記録はレベルごと（どうぶつ選択はなし）
+let state = {sound:true, level:0, demo:{}, rec:{}};
+try{
+  const s=JSON.parse(localStorage.getItem(KEY));
+  if(s) Object.assign(state, s);
+  else {
+    // v3（どうぶつ×レベル）からの引き継ぎ：最後に選んでいたどうぶつの記録を使う
+    const o=JSON.parse(localStorage.getItem('dochi-ooi-v3'));
+    if(o){
+      state.sound = o.sound!==false; state.level = o.level||0;
+      const a = o.animal!=null ? o.animal : 3;
+      if(o.rec && o.rec[a]) state.rec = o.rec[a];
+      Object.keys(o.demo||{}).forEach(k=>{ const [ai,l]=k.split('_'); if(+ai===a) state.demo[l]=true; });
+    }
+  }
+}catch(e){}
 function save(){ try{ localStorage.setItem(KEY, JSON.stringify(state)); }catch(e){} }
 function today(){ const d=new Date(); return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); }
-function recOf(a,l){ state.rec[a]=state.rec[a]||{}; return state.rec[a][l]=state.rec[a][l]||{plays:0,best:-1,last:-1,date:'',hist:[]}; }
+function recOf(l){ return state.rec[l]=state.rec[l]||{plays:0,best:-1,last:-1,date:'',hist:[]}; }
 
 // ---------- 小道具 ----------
 const $ = id => document.getElementById(id);
@@ -274,8 +283,6 @@ function levelArt(lv){
   return b;
 }
 function renderHome(){
-  const an=$('animals'); an.innerHTML='';
-  ANIMALS.forEach((e,i)=>{ const b=document.createElement('button'); b.className='animal'+(i===state.animal?' sel':''); b.textContent=e; b.onclick=()=>{SFX.tap(); state.animal=i; save(); renderHome();}; an.appendChild(b); });
   const lvs=$('levels'); lvs.innerHTML='';
   LEVELS.forEach((L,i)=>{ const b=document.createElement('button'); b.className='lvbtn'+(i===state.level?' sel':''); b.appendChild(levelArt(i)); const s=document.createElement('div'); s.className='stars'; s.textContent='★'.repeat(i+1); b.appendChild(s); b.onclick=()=>{SFX.tap(); state.level=i; save(); renderHome();}; lvs.appendChild(b); });
   $('soundBtn').textContent = state.sound?'🔊':'🔇';
@@ -288,14 +295,13 @@ $('helpBtn').onclick =()=>{ ac(); SFX.tap(); startGame(true); };
 let G=null;
 function later(fn,ms){ const id=setTimeout(()=>{ if(G && !G.dead) fn(); },ms); G.timers.push(id); return id; }
 function startGame(withDemo){
-  const lv=state.level, r=recOf(state.animal,lv);
+  const lv=state.level, r=recOf(lv);
   G={lv, st:Math.max(0,r.last-1), streak:0, idx:0, reached:-1, lock:true, demo:false, timers:[], dead:false, q:null, res:[]};
-  $('eater').textContent=ANIMALS[state.animal];
+  $('eater').textContent=EATER;
   const pr=$('progress'); pr.innerHTML=''; for(let i=0;i<NQ;i++){ const d=document.createElement('div'); d.className='pdot'; pr.appendChild(d); }
   $('inner').innerHTML=''; startBar(null);
   show('game');
-  const key=state.animal+'_'+lv;
-  if(withDemo || !state.demo[key]){ state.demo[key]=true; save(); later(()=>runDemo(()=>later(nextQuestion,500)),300); }
+  if(withDemo || !state.demo[lv]){ state.demo[lv]=true; save(); later(()=>runDemo(()=>later(nextQuestion,500)),300); }
   else later(nextQuestion,400);
 }
 function stopGame(){ if(!G) return; G.dead=true; G.timers.forEach(clearTimeout); $('hand').style.display='none'; $('lineup').classList.remove('on'); }
@@ -435,13 +441,13 @@ function runDemo(done){
 // ---------- 結果 ----------
 function stageLabel(lv,st){ const [c,r,a,b,T]=LEVELS[lv].stages[st]; return b+':'+a+'・'+c+'×'+r+'・'+(T?T+'秒以内':'制限なし'); }
 function finish(){
-  const lv=G.lv, r=recOf(state.animal,lv), prev=r.best, first=r.plays===0;
+  const lv=G.lv, r=recOf(lv), prev=r.best, first=r.plays===0;
   r.plays++; r.last=G.reached; r.date=today(); r.hist.push(G.reached); if(r.hist.length>7) r.hist=r.hist.slice(-7);
   const isNew = G.reached>prev;
   if(isNew) r.best=G.reached;
   save();
 
-  $('rAnimal').textContent=ANIMALS[state.animal];
+  $('rAnimal').textContent=EATER;
   const badge = first && G.reached>=0 ? '🌟' : (!first && isNew ? '👑' : '');
   $('rBadge').textContent=badge;
   if(badge) setTimeout(SFX.fan,250);
@@ -459,7 +465,7 @@ function finish(){
     s.style.height=(36+i*(130/(N-1||1)))+'px';
     if(i<=G.reached) s.classList.add( (!first && i>prev) ? 'new' : 'fill');
     if(!first && i===prev) s.classList.add('mark');
-    if(i===G.reached){ const me=document.createElement('div'); me.className='me'; me.textContent=ANIMALS[state.animal]; s.appendChild(me); }
+    if(i===G.reached){ const me=document.createElement('div'); me.className='me'; me.textContent=EATER; s.appendChild(me); }
     ld.appendChild(s);
   }
   const h=$('hist'); h.innerHTML='';
@@ -476,17 +482,17 @@ gear.addEventListener('pointerdown',e=>{ e.preventDefault(); gear.classList.add(
 ['pointerup','pointerleave','pointercancel'].forEach(ev=>gear.addEventListener(ev,()=>{ clearTimeout(pressT); gear.classList.remove('pressing'); }));
 function openAdult(){
   const rows=[];
-  ANIMALS.forEach((e,ai)=>LEVELS.forEach((L,li)=>{ const r=state.rec[ai]&&state.rec[ai][li]; if(r && r.plays>0) rows.push({ai,li,r}); }));
-  let html='<table><tr><th>どうぶつ</th><th>レベル</th><th>回数</th><th>自己ベスト</th><th>前回</th><th>最終日</th><th></th></tr>';
-  if(!rows.length) html+='<tr><td colspan="7">まだ記録がありません</td></tr>';
-  rows.forEach(({ai,li,r})=>{
-    html+=`<tr><td class="e">${ANIMALS[ai]}</td><td>${'★'.repeat(li+1)}</td><td>${r.plays}</td><td>${r.best>=0?stageLabel(li,r.best):'—'}</td><td>${r.last>=0?stageLabel(li,r.last):'—'}</td><td>${r.date}</td><td><button class="del" data-a="${ai}" data-l="${li}">消す</button></td></tr>`;
+  LEVELS.forEach((L,li)=>{ const r=state.rec[li]; if(r && r.plays>0) rows.push({li,r}); });
+  let html='<table><tr><th>レベル</th><th>回数</th><th>自己ベスト</th><th>前回</th><th>最終日</th><th></th></tr>';
+  if(!rows.length) html+='<tr><td colspan="6">まだ記録がありません</td></tr>';
+  rows.forEach(({li,r})=>{
+    html+=`<tr><td>${'★'.repeat(li+1)}</td><td>${r.plays}</td><td>${r.best>=0?stageLabel(li,r.best):'—'}</td><td>${r.last>=0?stageLabel(li,r.last):'—'}</td><td>${r.date}</td><td><button class="del" data-l="${li}">消す</button></td></tr>`;
   });
   html+='</table>';
   $('adultTable').innerHTML=html;
   $('adultTable').querySelectorAll('.del').forEach(b=>b.onclick=()=>{
     if(!b.classList.contains('sure')){ b.classList.add('sure'); b.textContent='もう一度押すと消えます'; setTimeout(()=>{ b.classList.remove('sure'); b.textContent='消す'; },3000); return; }
-    delete state.rec[b.dataset.a][b.dataset.l]; save(); openAdult();
+    delete state.rec[b.dataset.l]; save(); openAdult();
   });
   $('adult').classList.add('on');
 }
