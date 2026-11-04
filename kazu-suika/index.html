@@ -1,0 +1,605 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<title>かずスイカ ― 1000をめざせ！</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/matter-js/0.19.0/matter.min.js"></script>
+<style>
+  :root{
+    --bg1:#FFF6E5; --bg2:#FFE3C2; --ink:#4A3426; --accent:#FF7A00; --panel:#FFFFFF;
+  }
+  *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+  html,body{height:100%;overflow:hidden}
+  body{
+    font-family:"Hiragino Maru Gothic ProN","Rounded Mplus 1c","BIZ UDPGothic","Meiryo",system-ui,sans-serif;
+    background:linear-gradient(160deg,var(--bg1),var(--bg2));
+    color:var(--ink);
+    display:flex;flex-direction:column;align-items:center;justify-content:center;
+    user-select:none;-webkit-user-select:none;
+  }
+  #app{display:flex;flex-direction:column;align-items:center;gap:8px;padding:8px;width:100%}
+  header{
+    display:flex;gap:8px;align-items:stretch;justify-content:space-between;
+    width:var(--fw);
+  }
+  .card{
+    background:var(--panel);border-radius:14px;padding:6px 10px;
+    box-shadow:0 3px 0 rgba(74,52,38,.15);
+    display:flex;flex-direction:column;justify-content:center;
+  }
+  .card .lbl{font-size:11px;font-weight:700;opacity:.65;letter-spacing:.05em}
+  .card .val{font-size:22px;font-weight:900;line-height:1.1;font-variant-numeric:tabular-nums}
+  .scores{flex:1;display:flex;gap:8px}
+  .scores .card{flex:1}
+  #nextCard{align-items:center;width:78px}
+  #nextCanvas{width:52px;height:52px}
+  #fieldWrap{
+    position:relative;width:var(--fw);height:calc(var(--fw) * 1.5);
+    border-radius:18px;overflow:hidden;
+    background:linear-gradient(#FFFDF8,#FFF1DC);
+    box-shadow:0 0 0 4px #C8956A, 0 6px 0 4px #A87550;
+  }
+  #field{display:block;width:100%;height:100%;touch-action:none;cursor:crosshair}
+  #fieldWrap.shake{animation:shk .45s}
+  @keyframes shk{
+    0%,100%{transform:translate(0,0)}20%{transform:translate(-6px,2px)}
+    40%{transform:translate(6px,-2px)}60%{transform:translate(-4px,1px)}80%{transform:translate(3px,-1px)}
+  }
+  footer{display:flex;gap:8px;width:var(--fw)}
+  button{
+    font-family:inherit;font-weight:900;border:none;border-radius:14px;cursor:pointer;
+    font-size:17px;padding:10px 12px;color:#fff;
+    box-shadow:0 4px 0 rgba(0,0,0,.22);transition:transform .05s;white-space:nowrap;
+  }
+  button:active{transform:translateY(3px);box-shadow:0 1px 0 rgba(0,0,0,.22)}
+  button:disabled{filter:grayscale(1);opacity:.5;cursor:default}
+  #shakeBtn{flex:2;background:#00B0FF}
+  #ruleBtn{flex:1;background:#7CB342}
+  #restartBtn{flex:1;background:#FF5252}
+  .overlay{
+    position:absolute;inset:0;display:flex;align-items:center;justify-content:center;
+    background:rgba(255,248,236,.86);backdrop-filter:blur(2px);z-index:5;padding:14px;
+  }
+  .overlay.hidden{display:none}
+  .box{
+    background:#fff;border-radius:18px;padding:16px 16px 14px;width:100%;max-height:100%;overflow:auto;
+    box-shadow:0 6px 0 rgba(74,52,38,.18);text-align:center;
+  }
+  .box h1{font-size:26px;margin-bottom:4px}
+  .box h2{font-size:22px;margin-bottom:8px}
+  .box p{font-size:14px;line-height:1.6}
+  .flow{display:grid;grid-template-columns:auto 1fr;gap:4px 10px;text-align:left;margin:10px 0;font-size:14px;align-items:center}
+  .flow b{font-size:15px;white-space:nowrap}
+  .chip{display:inline-block;min-width:26px;padding:1px 6px;border-radius:999px;color:#fff;font-weight:900;text-align:center;font-size:13px;margin:1px}
+  .big{font-size:40px;font-weight:900;color:var(--accent);line-height:1.2}
+  .resRow{display:flex;justify-content:space-between;padding:6px 4px;border-bottom:1px dashed #E6CFB5;font-size:16px}
+  .resRow strong{font-size:20px}
+  .box button{margin-top:12px;width:100%;background:var(--accent);font-size:20px}
+  .newrec{color:#E040FB;font-weight:900;animation:blink .8s infinite alternate}
+  @keyframes blink{from{opacity:.4}to{opacity:1}}
+</style>
+</head>
+<body>
+<div id="app">
+  <header>
+    <div class="scores">
+      <div class="card"><span class="lbl">スコア</span><span class="val" id="score">0</span></div>
+      <div class="card"><span class="lbl">ハイスコア</span><span class="val" id="high">0</span></div>
+    </div>
+    <div class="card" id="nextCard"><span class="lbl">NEXT</span><canvas id="nextCanvas" width="104" height="104"></canvas></div>
+  </header>
+
+  <div id="fieldWrap">
+    <canvas id="field"></canvas>
+
+    <div class="overlay" id="startOv">
+      <div class="box">
+        <h1>かずスイカ</h1>
+        <p>たして ちょうどの数 になる ボールを<br>くっつけて、<b>1000</b> をめざそう！</p>
+        <div class="flow" id="flowStart"></div>
+        <p style="font-size:12px;opacity:.75">赤い線より上に3秒いるとゲームオーバー</p>
+        <button id="startBtn">スタート！</button>
+      </div>
+    </div>
+
+    <div class="overlay hidden" id="ruleOv">
+      <div class="box">
+        <h2>がったいのルール</h2>
+        <div class="flow" id="flowRule"></div>
+        <p style="font-size:12px;opacity:.75">PC：マウスでうごかしてクリック／スマホ：ゆびでうごかしてはなす</p>
+        <button id="ruleClose">とじる</button>
+      </div>
+    </div>
+
+    <div class="overlay hidden" id="resultOv">
+      <div class="box">
+        <h2>ゲームオーバー</h2>
+        <div class="big" id="resScore">0</div>
+        <div id="resNew" class="newrec" style="display:none">ハイスコア こうしん！</div>
+        <div class="resRow"><span>いちばん大きい数</span><strong id="resMax">-</strong></div>
+        <div class="resRow"><span>このゲームで解いた計算</span><strong id="resGame">0問</strong></div>
+        <div class="resRow"><span>今日解いた計算</span><strong id="resToday">0問</strong></div>
+        <button id="againBtn">もういちど</button>
+      </div>
+    </div>
+  </div>
+
+  <footer>
+    <button id="ruleBtn">ルール</button>
+    <button id="shakeBtn">ゆらす（のこり2）</button>
+    <button id="restartBtn">リセット</button>
+  </footer>
+</div>
+
+<script>
+(() => {
+'use strict';
+const { Engine, Bodies, Body, Composite, Events } = Matter;
+
+/* ===== 定数 ===== */
+const W = 400, H = 600;
+const DEAD_Y = 92;          // デッドライン
+const DROP_Y = 44;          // 投下位置
+const COOLDOWN = 1000;      // 投下クールダウン(ms)
+const OVER_LIMIT = 3000;    // ライン越え許容時間(ms)
+const GRACE = 1000;         // 生まれたばかりのボールは判定しない(ms)
+const MAX_SHAKE = 2;
+
+/* ボール定義（10〜50, 100〜500 の間に「つなぎ」の数を追加） */
+const DEFS = [
+  { v:1,    r:18, c:'#FF5252' },
+  { v:2,    r:22, c:'#FF7A00' },
+  { v:3,    r:26, c:'#FFD600', dark:true },
+  { v:4,    r:30, c:'#7CB342' },
+  { v:5,    r:36, c:'#2E7D32' },
+  { v:10,   r:44, c:'#00B0FF' },
+  { v:20,   r:46, c:'#00ACC1' },
+  { v:30,   r:48, c:'#00897B' },
+  { v:40,   r:51, c:'#3949AB' },
+  { v:50,   r:54, c:'#2979FF' },
+  { v:100,  r:66, c:'#7C4DFF' },
+  { v:200,  r:69, c:'#AB47BC' },
+  { v:300,  r:72, c:'#D81B60' },
+  { v:400,  r:76, c:'#6D4C41' },
+  { v:500,  r:80, c:'#FFAB00', dark:true },
+  { v:1000, r:96, c:'#E040FB', rainbow:true },
+];
+const DEF = Object.fromEntries(DEFS.map(d => [d.v, d]));
+const DROPPABLE = [1,2,3,4];
+const TENS = new Set([10,20,30,40]);
+const HUNDREDS = new Set([100,200,300,400]);
+
+/* 合成ルール：結果の数を返す（合体しないなら null） */
+function mergeResult(a, b){
+  if (a < 5 && b < 5) return (a + b === 5) ? 5 : null;         // 1+4, 2+3
+  if (a === 5 && b === 5) return 10;                            // 5+5
+  if (TENS.has(a) && TENS.has(b)) { const s=a+b; return s<=50 ? s : null; }       // 10〜40 → 50まで
+  if (a === 50 && b === 50) return 100;                         // 50+50
+  if (HUNDREDS.has(a) && HUNDREDS.has(b)) { const s=a+b; return s<=500 ? s : null; } // 100〜400 → 500まで
+  if (a === 500 && b === 500) return 1000;                      // 500+500
+  return null;
+}
+
+/* ===== DOM ===== */
+const $ = id => document.getElementById(id);
+const canvas = $('field'), ctx = canvas.getContext('2d');
+const nextCv = $('nextCanvas'), nctx = nextCv.getContext('2d');
+const wrap = $('fieldWrap');
+
+/* ===== localStorage ===== */
+const store = {
+  get(k, d){ try{ const v = localStorage.getItem(k); return v==null ? d : JSON.parse(v); }catch(e){ return d; } },
+  set(k, v){ try{ localStorage.setItem(k, JSON.stringify(v)); }catch(e){} }
+};
+function todayKey(){ const d=new Date(); return d.getFullYear()+'-'+(d.getMonth()+1)+'-'+d.getDate(); }
+function addDaily(n){
+  const rec = store.get('kazuSuika_daily', {date:'', count:0});
+  if (rec.date !== todayKey()) { rec.date = todayKey(); rec.count = 0; }
+  rec.count += n; store.set('kazuSuika_daily', rec); return rec.count;
+}
+function getDaily(){
+  const rec = store.get('kazuSuika_daily', {date:'', count:0});
+  return rec.date === todayKey() ? rec.count : 0;
+}
+
+/* ===== サウンド（Web Audio） ===== */
+let actx = null;
+function ensureAudio(){
+  if (!actx) { try{ actx = new (window.AudioContext||window.webkitAudioContext)(); }catch(e){} }
+  if (actx && actx.state === 'suspended') actx.resume();
+}
+function tone(f, dur, {type='sine', vol=0.18, to=null, delay=0}={}){
+  if (!actx) return;
+  const t0 = actx.currentTime + delay;
+  const o = actx.createOscillator(), g = actx.createGain();
+  o.type = type; o.frequency.setValueAtTime(f, t0);
+  if (to) o.frequency.exponentialRampToValueAtTime(to, t0 + dur);
+  g.gain.setValueAtTime(0.0001, t0);
+  g.gain.exponentialRampToValueAtTime(vol, t0 + 0.01);
+  g.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
+  o.connect(g).connect(actx.destination);
+  o.start(t0); o.stop(t0 + dur + 0.02);
+}
+const sfx = {
+  drop(){ tone(520, 0.12, {type:'triangle', to:260, vol:0.15}); },
+  merge(level){
+    const base = 392 * Math.pow(2, level/7);
+    tone(base, 0.14, {type:'sine', vol:0.2});
+    tone(base*1.5, 0.2, {type:'sine', vol:0.16, delay:0.07});
+  },
+  big(){ [523,659,784,1047,1319].forEach((f,i)=>tone(f,0.25,{type:'triangle',vol:0.18,delay:i*0.09})); },
+  shake(){ tone(140, 0.35, {type:'sawtooth', vol:0.08, to:90}); },
+  warn(){ tone(880, 0.08, {type:'square', vol:0.06}); },
+  over(){ [440,370,311,262].forEach((f,i)=>tone(f,0.3,{type:'sawtooth',vol:0.1,delay:i*0.18})); }
+};
+
+/* ===== 状態 ===== */
+let engine, balls = [], mergeQueue = [], particles = [], popups = [];
+let score, solvedGame, maxValue, shakesLeft;
+let current, next, canDrop, gameOver, started = false;
+let pointerX = W/2, dragging = false;
+let overTime = 0, lastWarnSec = -1;
+let high = store.get('kazuSuika_high', 0);
+$('high').textContent = high;
+
+function randDrop(){ return DROPPABLE[Math.floor(Math.random()*DROPPABLE.length)]; }
+
+function newGame(){
+  engine = Engine.create();
+  engine.gravity.y = 1;
+  const opt = { isStatic:true, friction:0.5, render:{visible:false} };
+  Composite.add(engine.world, [
+    Bodies.rectangle(W/2, H+30, W+200, 60, opt),
+    Bodies.rectangle(-30, H/2, 60, H*3, opt),
+    Bodies.rectangle(W+30, H/2, 60, H*3, opt),
+  ]);
+  Events.on(engine, 'collisionStart', onCollision);
+  Events.on(engine, 'collisionActive', onCollision);
+
+  balls = []; mergeQueue = []; particles = []; popups = [];
+  score = 0; solvedGame = 0; maxValue = 0; shakesLeft = MAX_SHAKE;
+  current = randDrop(); next = randDrop();
+  canDrop = true; gameOver = false; overTime = 0; lastWarnSec = -1;
+  $('score').textContent = 0;
+  updateShakeBtn(); drawNext();
+  $('resultOv').classList.add('hidden');
+}
+
+/* ===== ボール ===== */
+function makeBall(v, x, y){
+  const d = DEF[v];
+  x = Math.max(d.r, Math.min(W - d.r, x));
+  const b = Bodies.circle(x, y, d.r, {
+    restitution: 0.15, friction: 0.35, frictionStatic: 0.5, frictionAir: 0.008, density: 0.0012
+  });
+  b.isBall = true; b.val = v; b.def = d; b.born = performance.now(); b.merging = false;
+  Composite.add(engine.world, b);
+  balls.push(b);
+  if (v > maxValue) maxValue = v;
+  return b;
+}
+function removeBall(b){
+  Composite.remove(engine.world, b);
+  const i = balls.indexOf(b); if (i >= 0) balls.splice(i, 1);
+}
+
+function onCollision(e){
+  if (gameOver) return;
+  for (const p of e.pairs){
+    const a = p.bodyA, b = p.bodyB;
+    if (!a.isBall || !b.isBall || a.merging || b.merging) continue;
+    const r = mergeResult(a.val, b.val);
+    if (r == null) continue;
+    a.merging = b.merging = true;
+    mergeQueue.push([a, b, r]);
+  }
+}
+
+function processMerges(){
+  while (mergeQueue.length){
+    const [a, b, v] = mergeQueue.shift();
+    const x = (a.position.x + b.position.x)/2, y = (a.position.y + b.position.y)/2;
+    const vx = (a.velocity.x + b.velocity.x)/2, vy = (a.velocity.y + b.velocity.y)/2;
+    const lo = Math.min(a.val, b.val), hi = Math.max(a.val, b.val);
+    removeBall(a); removeBall(b);
+    const nb = makeBall(v, x, y);
+    Body.setVelocity(nb, { x: vx*0.4, y: Math.min(vy*0.4, 0) - 1 });
+
+    score += v; solvedGame++; addDaily(1);
+    $('score').textContent = score;
+    const level = DEFS.findIndex(d => d.v === v);
+    burst(x, y, DEF[v], v >= 1000 ? 70 : 16 + level*2);
+    popups.push({ x, y: y - DEF[v].r*0.3, text: `${lo}+${hi}=${v}`, sub: `+${v}!`, t: 0, color: DEF[v].rainbow ? '#E040FB' : DEF[v].c });
+    if (v >= 1000){ sfx.big(); wrap.classList.remove('shake'); void wrap.offsetWidth; wrap.classList.add('shake'); }
+    else sfx.merge(level);
+  }
+}
+
+/* ===== パーティクル ===== */
+const RAINBOW = ['#FF5252','#FFAB00','#FFD600','#7CB342','#00B0FF','#7C4DFF','#E040FB'];
+function burst(x, y, d, n){
+  for (let i=0; i<n; i++){
+    const ang = Math.random()*Math.PI*2, sp = 2 + Math.random()*4 + (d.r/40);
+    particles.push({
+      x, y, vx: Math.cos(ang)*sp, vy: Math.sin(ang)*sp - 1.5,
+      life: 1, decay: 0.018 + Math.random()*0.02,
+      size: 3 + Math.random()*4,
+      color: d.rainbow ? RAINBOW[i % RAINBOW.length] : (Math.random()<0.3 ? '#FFFFFF' : d.c),
+      star: Math.random() < 0.35
+    });
+  }
+}
+
+/* ===== 操作 ===== */
+function toLocalX(e){
+  const r = canvas.getBoundingClientRect();
+  return (e.clientX - r.left) * (W / r.width);
+}
+canvas.addEventListener('pointerdown', e => {
+  if (!started) return;
+  ensureAudio();
+  dragging = true; pointerX = toLocalX(e);
+  try{ canvas.setPointerCapture(e.pointerId); }catch(_){}
+});
+canvas.addEventListener('pointermove', e => { pointerX = toLocalX(e); });
+canvas.addEventListener('pointerup', e => {
+  if (!dragging) return;
+  dragging = false; pointerX = toLocalX(e);
+  drop();
+});
+canvas.addEventListener('pointercancel', () => { dragging = false; });
+
+function drop(){
+  if (!started || gameOver || !canDrop) return;
+  const d = DEF[current];
+  const x = Math.max(d.r, Math.min(W - d.r, pointerX));
+  makeBall(current, x, DROP_Y);
+  sfx.drop();
+  current = next; next = randDrop(); drawNext();
+  canDrop = false;
+  setTimeout(() => { canDrop = true; }, COOLDOWN);
+}
+
+function updateShakeBtn(){
+  $('shakeBtn').textContent = `ゆらす（のこり${shakesLeft}）`;
+  $('shakeBtn').disabled = shakesLeft <= 0;
+}
+$('shakeBtn').addEventListener('click', () => {
+  if (!started || gameOver || shakesLeft <= 0) return;
+  ensureAudio();
+  shakesLeft--; updateShakeBtn();
+  for (const b of balls){
+    Body.setVelocity(b, {
+      x: b.velocity.x + (Math.random() - 0.5) * 5,
+      y: b.velocity.y - (3 + Math.random() * 4)
+    });
+  }
+  sfx.shake();
+  wrap.classList.remove('shake'); void wrap.offsetWidth; wrap.classList.add('shake');
+});
+$('restartBtn').addEventListener('click', () => { if (!started) return; ensureAudio(); newGame(); });
+$('againBtn').addEventListener('click', () => { ensureAudio(); newGame(); });
+$('startBtn').addEventListener('click', () => {
+  ensureAudio(); started = true; $('startOv').classList.add('hidden'); newGame();
+});
+$('ruleBtn').addEventListener('click', () => $('ruleOv').classList.remove('hidden'));
+$('ruleClose').addEventListener('click', () => $('ruleOv').classList.add('hidden'));
+
+/* ===== ゲームオーバー判定 ===== */
+function checkDeadLine(dt){
+  const now = performance.now();
+  let over = false;
+  for (const b of balls){
+    if (now - b.born < GRACE) continue;
+    if (b.position.y - b.def.r < DEAD_Y) { over = true; break; }
+  }
+  if (over){
+    overTime += dt;
+    const sec = Math.floor(overTime/1000);
+    if (sec !== lastWarnSec){ lastWarnSec = sec; sfx.warn(); }
+    if (overTime >= OVER_LIMIT) endGame();
+  } else { overTime = 0; lastWarnSec = -1; }
+}
+
+function endGame(){
+  gameOver = true;
+  sfx.over();
+  let isNew = false;
+  if (score > high){ high = score; store.set('kazuSuika_high', high); $('high').textContent = high; isNew = true; }
+  $('resScore').textContent = score + ' 点';
+  $('resNew').style.display = isNew ? 'block' : 'none';
+  $('resMax').textContent = maxValue || '-';
+  $('resGame').textContent = solvedGame + '問';
+  $('resToday').textContent = getDaily() + '問';
+  setTimeout(() => $('resultOv').classList.remove('hidden'), 700);
+}
+
+/* ===== 描画 ===== */
+function fitCanvas(){
+  const availH = window.innerHeight - 150;
+  const fw = Math.max(240, Math.min(window.innerWidth - 24, availH / 1.5, 440));
+  document.documentElement.style.setProperty('--fw', fw + 'px');
+  const dpr = Math.min(window.devicePixelRatio || 1, 2.5);
+  canvas.width = Math.round(fw * dpr); canvas.height = Math.round(fw * 1.5 * dpr);
+  ctx.setTransform(canvas.width / W, 0, 0, canvas.height / H, 0, 0);
+}
+window.addEventListener('resize', fitCanvas);
+
+function shade(hex, amt){
+  const n = parseInt(hex.slice(1), 16);
+  let r = (n>>16)&255, g = (n>>8)&255, b = n&255;
+  const f = v => Math.max(0, Math.min(255, Math.round(amt < 0 ? v*(1+amt) : v + (255-v)*amt)));
+  return `rgb(${f(r)},${f(g)},${f(b)})`;
+}
+
+function drawBall(c, x, y, d, scale=1, alpha=1, t=0){
+  const r = d.r * scale;
+  c.save(); c.globalAlpha = alpha;
+  if (d.rainbow){
+    c.shadowColor = 'rgba(224,64,251,.8)'; c.shadowBlur = 18 + Math.sin(t/200)*6;
+    let fill;
+    if (c.createConicGradient){
+      fill = c.createConicGradient(t/900, x, y);
+      RAINBOW.concat(RAINBOW[0]).forEach((col,i,arr)=>fill.addColorStop(i/(arr.length-1), col));
+    } else {
+      fill = c.createLinearGradient(x-r, y-r, x+r, y+r);
+      RAINBOW.forEach((col,i)=>fill.addColorStop(i/(RAINBOW.length-1), col));
+    }
+    c.fillStyle = fill;
+  } else {
+    const g = c.createRadialGradient(x - r*0.35, y - r*0.4, r*0.1, x, y, r);
+    g.addColorStop(0, shade(d.c, 0.45)); g.addColorStop(0.55, d.c); g.addColorStop(1, shade(d.c, -0.18));
+    c.fillStyle = g;
+  }
+  c.beginPath(); c.arc(x, y, r, 0, Math.PI*2); c.fill();
+  c.shadowBlur = 0;
+  c.lineWidth = Math.max(2, r*0.07);
+  c.strokeStyle = d.rainbow ? 'rgba(255,255,255,.9)' : shade(d.c, -0.3);
+  c.stroke();
+  // ハイライト
+  c.fillStyle = 'rgba(255,255,255,.35)';
+  c.beginPath(); c.ellipse(x - r*0.38, y - r*0.45, r*0.28, r*0.16, -0.6, 0, Math.PI*2); c.fill();
+  // 数字
+  const s = String(d.v);
+  const k = s.length === 1 ? 1.05 : s.length === 2 ? 0.88 : s.length === 3 ? 0.68 : 0.54;
+  c.font = `900 ${Math.round(r*k)}px "Hiragino Maru Gothic ProN","Rounded Mplus 1c","Arial Rounded MT Bold",sans-serif`;
+  c.textAlign = 'center'; c.textBaseline = 'middle';
+  c.lineWidth = Math.max(2, r*0.1); c.lineJoin = 'round';
+  c.strokeStyle = d.dark ? 'rgba(255,255,255,.85)' : 'rgba(0,0,0,.35)';
+  c.strokeText(s, x, y + r*0.05);
+  c.fillStyle = d.dark ? '#4A3426' : '#FFFFFF';
+  c.fillText(s, x, y + r*0.05);
+  c.restore();
+}
+
+function drawStar(c, x, y, r){
+  c.beginPath();
+  for (let i=0; i<10; i++){
+    const a = -Math.PI/2 + i*Math.PI/5, rr = i%2 ? r*0.45 : r;
+    c.lineTo(x + Math.cos(a)*rr, y + Math.sin(a)*rr);
+  }
+  c.closePath(); c.fill();
+}
+
+function drawNext(){
+  const s = nextCv.width;
+  nctx.clearRect(0, 0, s, s);
+  const d = DEF[next];
+  const sc = (s*0.42) / d.r;
+  drawBall(nctx, s/2, s/2, d, sc);
+}
+
+function render(t){
+  ctx.clearRect(0, 0, W, H);
+
+  // デッドライン
+  const danger = overTime > 0;
+  ctx.save();
+  ctx.setLineDash([12, 8]); ctx.lineWidth = 3;
+  ctx.strokeStyle = danger ? (Math.floor(t/150)%2 ? '#FF1744' : 'rgba(255,23,68,.35)') : '#FF5252';
+  ctx.beginPath(); ctx.moveTo(0, DEAD_Y); ctx.lineTo(W, DEAD_Y); ctx.stroke();
+  ctx.restore();
+  if (danger){
+    ctx.save();
+    ctx.fillStyle = `rgba(255,23,68,${0.08 + 0.06*Math.sin(t/120)})`;
+    ctx.fillRect(0, 0, W, DEAD_Y);
+    ctx.font = '900 64px sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.fillStyle = 'rgba(255,23,68,.85)';
+    ctx.fillText(Math.max(1, Math.ceil((OVER_LIMIT - overTime)/1000)), W/2, H/2);
+    ctx.restore();
+  }
+
+  // 投下ガイド＆プレビュー
+  if (started && !gameOver){
+    const d = DEF[current];
+    const x = Math.max(d.r, Math.min(W - d.r, pointerX));
+    ctx.save();
+    ctx.setLineDash([4, 6]); ctx.lineWidth = 2; ctx.strokeStyle = 'rgba(74,52,38,.22)';
+    ctx.beginPath(); ctx.moveTo(x, DROP_Y + d.r); ctx.lineTo(x, H); ctx.stroke();
+    ctx.restore();
+    drawBall(ctx, x, DROP_Y, d, 1, canDrop ? 1 : 0.35, t);
+  }
+
+  // ボール
+  const now = performance.now();
+  for (const b of balls){
+    const age = now - b.born;
+    const sc = age < 160 && b.val > 4 ? 0.7 + 0.3*(age/160) + Math.sin(age/160*Math.PI)*0.08 : 1;
+    drawBall(ctx, b.position.x, b.position.y, b.def, sc, 1, t);
+  }
+
+  // パーティクル
+  for (let i = particles.length - 1; i >= 0; i--){
+    const p = particles[i];
+    p.x += p.vx; p.y += p.vy; p.vy += 0.12; p.vx *= 0.98; p.life -= p.decay;
+    if (p.life <= 0){ particles.splice(i, 1); continue; }
+    ctx.globalAlpha = p.life; ctx.fillStyle = p.color;
+    if (p.star) drawStar(ctx, p.x, p.y, p.size*1.6);
+    else { ctx.beginPath(); ctx.arc(p.x, p.y, p.size*p.life + 1, 0, Math.PI*2); ctx.fill(); }
+  }
+  ctx.globalAlpha = 1;
+
+  // ポップアップ（式と得点）
+  for (let i = popups.length - 1; i >= 0; i--){
+    const p = popups[i];
+    p.t += 1;
+    if (p.t > 70){ popups.splice(i, 1); continue; }
+    const a = p.t < 50 ? 1 : 1 - (p.t-50)/20;
+    const y = p.y - p.t*0.9;
+    const pop = p.t < 8 ? 0.6 + p.t*0.06 : 1;
+    ctx.save(); ctx.globalAlpha = a;
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.lineJoin = 'round';
+    ctx.font = `900 ${Math.round(24*pop)}px "Hiragino Maru Gothic ProN",sans-serif`;
+    ctx.lineWidth = 6; ctx.strokeStyle = '#FFFFFF'; ctx.strokeText(p.text, p.x, y);
+    ctx.fillStyle = '#4A3426'; ctx.fillText(p.text, p.x, y);
+    ctx.font = `900 ${Math.round(20*pop)}px "Hiragino Maru Gothic ProN",sans-serif`;
+    ctx.strokeText(p.sub, p.x, y + 24);
+    ctx.fillStyle = p.color; ctx.fillText(p.sub, p.x, y + 24);
+    ctx.restore();
+  }
+}
+
+/* ===== ルール表示 ===== */
+function chip(v){
+  const d = DEF[v];
+  const bg = d.rainbow ? 'linear-gradient(90deg,#FF5252,#FFD600,#00B0FF,#E040FB)' : d.c;
+  return `<span class="chip" style="background:${bg};${d.dark?'color:#4A3426':''}">${v}</span>`;
+}
+const FLOW = [
+  ['5をつくる',   `${chip(1)}+${chip(4)}　${chip(2)}+${chip(3)}`],
+  ['10をつくる',  `${chip(5)}+${chip(5)}`],
+  ['50をつくる',  `${chip(10)}+${chip(10)}=${chip(20)}　${chip(20)}+${chip(30)}=${chip(50)} など<br><small>たして50までになる組み合わせ</small>`],
+  ['100をつくる', `${chip(50)}+${chip(50)}`],
+  ['500をつくる', `${chip(100)}+${chip(100)}=${chip(200)}　${chip(200)}+${chip(300)}=${chip(500)} など<br><small>たして500までになる組み合わせ</small>`],
+  ['1000！',     `${chip(500)}+${chip(500)}=${chip(1000)}`],
+];
+const flowHTML = FLOW.map(([a,b]) => `<b>${a}</b><span>${b}</span>`).join('');
+$('flowStart').innerHTML = flowHTML;
+$('flowRule').innerHTML = flowHTML;
+
+/* ===== メインループ ===== */
+const STEP = 1000/60;
+let last = performance.now(), acc = 0;
+function loop(t){
+  const dt = Math.min(t - last, 50); last = t;
+  if (started && engine && !gameOver){
+    acc += dt;
+    while (acc >= STEP){
+      Engine.update(engine, STEP);
+      processMerges();
+      acc -= STEP;
+    }
+    checkDeadLine(dt);
+  }
+  render(t);
+  requestAnimationFrame(loop);
+}
+
+fitCanvas();
+current = randDrop(); next = randDrop(); drawNext();
+requestAnimationFrame(loop);
+})();
+</script>
+</body>
+</html>
