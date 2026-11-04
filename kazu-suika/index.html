@@ -264,7 +264,7 @@ function loadHigh(){
 }
 
 /* 次の玉の決め方（難易度で変わる） */
-let bag = [];
+let bag = [], recent = [];
 function randDrop(){
   if (diff === 'hard') return DROPPABLE[Math.floor(Math.random()*4)];
   if (diff === 'normal'){
@@ -272,14 +272,26 @@ function randDrop(){
     if (!bag.length){ bag = DROPPABLE.slice(); for (let i=bag.length-1;i>0;i--){ const j=Math.floor(Math.random()*(i+1)); [bag[i],bag[j]]=[bag[j],bag[i]]; } }
     return bag.pop();
   }
-  // かんたん：フィールドにある数（と今もっている玉）の「5の相手」が出やすい
+  // かんたん：表面に見えている数（と今もっている玉）の「5の相手」が出やすい
+  // 下にうもれて届かない玉は数えない（うもれた玉の相手ばかり出るのをふせぐ）
   const cnt = {1:0,2:0,3:0,4:0};
-  for (const b of balls) if (b.val < 5) cnt[b.val]++;
-  if (current) cnt[current]++;
-  const w = DROPPABLE.map(v => 1 + 2 * Math.min(cnt[5 - v], 3));
-  let r = Math.random() * w.reduce((a,c)=>a+c, 0);
-  for (let i=0; i<4; i++){ r -= w[i]; if (r < 0) return DROPPABLE[i]; }
-  return 4;
+  for (const b of balls){
+    if (b.val >= 5) continue;
+    const covered = balls.some(o => o !== b &&
+      o.position.y < b.position.y - b.def.r * 0.3 &&
+      Math.abs(o.position.x - b.position.x) < (o.def.r + b.def.r) * 0.85);
+    if (!covered) cnt[b.val]++;
+  }
+  if (current) cnt[current] += 2;   // 次に落とす玉の相手は特に出やすく
+  const w = DROPPABLE.map(v => 1 + 2 * Math.min(cnt[5 - v], 2));
+  let pick = 4;
+  for (let tries = 0; tries < 5; tries++){
+    let r = Math.random() * w.reduce((a,c)=>a+c, 0);
+    for (let i=0; i<4; i++){ r -= w[i]; if (r < 0){ pick = DROPPABLE[i]; break; } }
+    if (!(recent.length >= 2 && recent[0] === pick && recent[1] === pick)) break;  // 同じ数の3連続はさける
+  }
+  recent = [pick].concat(recent).slice(0, 2);
+  return pick;
 }
 
 function newGame(){
@@ -296,7 +308,7 @@ function newGame(){
 
   balls = []; mergeQueue = []; particles = []; popups = [];
   score = 0; solvedGame = 0; maxValue = 0; shakesLeft = DIFFS[diff].shakes;
-  bag = []; current = null; current = randDrop(); next = randDrop();
+  bag = []; recent = []; current = null; current = randDrop(); next = randDrop();
   canDrop = true; gameOver = false; overTime = 0; lastWarnSec = -1;
   $('score').textContent = 0;
   updateShakeBtn(); drawNext();
