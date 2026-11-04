@@ -76,6 +76,11 @@
   .resRow{display:flex;justify-content:space-between;padding:6px 4px;border-bottom:1px dashed #E6CFB5;font-size:16px}
   .resRow strong{font-size:20px}
   .box button{margin-top:12px;width:100%;background:var(--accent);font-size:20px}
+  .diff{display:flex;gap:6px;margin-top:10px}
+  .diff button{margin-top:0;flex:1;font-size:16px;padding:10px 4px;line-height:1.25}
+  .diff button small{display:block;font-size:10px;font-weight:700;opacity:.9}
+  .diff .easy{background:#7CB342}.diff .normal{background:#00B0FF}.diff .hard{background:#FF5252}
+  .box .sub{background:#C8956A;font-size:16px;margin-top:8px}
   .newrec{color:#E040FB;font-weight:900;animation:blink .8s infinite alternate}
   @keyframes blink{from{opacity:.4}to{opacity:1}}
 </style>
@@ -85,7 +90,7 @@
   <header>
     <div class="scores">
       <div class="card"><span class="lbl">スコア</span><span class="val" id="score">0</span></div>
-      <div class="card"><span class="lbl">ハイスコア</span><span class="val" id="high">0</span></div>
+      <div class="card"><span class="lbl">ハイスコア<span id="diffLbl"></span></span><span class="val" id="high">0</span></div>
     </div>
     <div class="card" id="nextCard"><span class="lbl">NEXT</span><canvas id="nextCanvas" width="104" height="104"></canvas></div>
   </header>
@@ -99,7 +104,12 @@
         <p>たして ちょうどの数 になる ボールを<br>くっつけて、<b>1000</b> をめざそう！</p>
         <div class="flow" id="flowStart"></div>
         <p style="font-size:12px;opacity:.75">赤い線より上に3秒いるとゲームオーバー</p>
-        <button id="startBtn">スタート！</button>
+        <p style="font-weight:900;margin-top:4px">むずかしさを えらんでスタート！</p>
+        <div class="diff">
+          <button class="easy" data-diff="easy">かんたん<small>あいての数が出やすい<br>ゆらす3回</small></button>
+          <button class="normal" data-diff="normal">ふつう<small>1〜4がかたよらない<br>ゆらす2回</small></button>
+          <button class="hard" data-diff="hard">むずかしい<small>完全ランダム<br>ゆらす1回</small></button>
+        </div>
       </div>
     </div>
 
@@ -121,6 +131,7 @@
         <div class="resRow"><span>このゲームで解いた計算</span><strong id="resGame">0問</strong></div>
         <div class="resRow"><span>今日解いた計算</span><strong id="resToday">0問</strong></div>
         <button id="againBtn">もういちど</button>
+        <button id="changeDiffBtn" class="sub">むずかしさを かえる</button>
       </div>
     </div>
   </div>
@@ -144,7 +155,12 @@ const DROP_Y = 44;          // 投下位置
 const COOLDOWN = 1000;      // 投下クールダウン(ms)
 const OVER_LIMIT = 3000;    // ライン越え許容時間(ms)
 const GRACE = 1000;         // 生まれたばかりのボールは判定しない(ms)
-const MAX_SHAKE = 2;
+const DIFFS = {
+  easy:   { label:'かんたん',   shakes:3 },
+  normal: { label:'ふつう',     shakes:2 },
+  hard:   { label:'むずかしい', shakes:1 },
+};
+let diff = 'normal';
 
 /* ボール定義（10〜50, 100〜500 の間に「つなぎ」の数を追加） */
 const DEFS = [
@@ -240,10 +256,31 @@ let score, solvedGame, maxValue, shakesLeft;
 let current, next, canDrop, gameOver, started = false;
 let pointerX = W/2, dragging = false;
 let overTime = 0, lastWarnSec = -1;
-let high = store.get('kazuSuika_high', 0);
-$('high').textContent = high;
+let high = 0;
+function loadHigh(){
+  high = store.get('kazuSuika_high_' + diff, 0);
+  $('high').textContent = high;
+  $('diffLbl').textContent = '（' + DIFFS[diff].label + '）';
+}
 
-function randDrop(){ return DROPPABLE[Math.floor(Math.random()*DROPPABLE.length)]; }
+/* 次の玉の決め方（難易度で変わる） */
+let bag = [];
+function randDrop(){
+  if (diff === 'hard') return DROPPABLE[Math.floor(Math.random()*4)];
+  if (diff === 'normal'){
+    // 袋方式：1〜4を1つずつ袋に入れて、ぜんぶ出たら入れなおす
+    if (!bag.length){ bag = DROPPABLE.slice(); for (let i=bag.length-1;i>0;i--){ const j=Math.floor(Math.random()*(i+1)); [bag[i],bag[j]]=[bag[j],bag[i]]; } }
+    return bag.pop();
+  }
+  // かんたん：フィールドにある数（と今もっている玉）の「5の相手」が出やすい
+  const cnt = {1:0,2:0,3:0,4:0};
+  for (const b of balls) if (b.val < 5) cnt[b.val]++;
+  if (current) cnt[current]++;
+  const w = DROPPABLE.map(v => 1 + 2 * Math.min(cnt[5 - v], 3));
+  let r = Math.random() * w.reduce((a,c)=>a+c, 0);
+  for (let i=0; i<4; i++){ r -= w[i]; if (r < 0) return DROPPABLE[i]; }
+  return 4;
+}
 
 function newGame(){
   engine = Engine.create();
@@ -258,8 +295,8 @@ function newGame(){
   Events.on(engine, 'collisionActive', onCollision);
 
   balls = []; mergeQueue = []; particles = []; popups = [];
-  score = 0; solvedGame = 0; maxValue = 0; shakesLeft = MAX_SHAKE;
-  current = randDrop(); next = randDrop();
+  score = 0; solvedGame = 0; maxValue = 0; shakesLeft = DIFFS[diff].shakes;
+  bag = []; current = null; current = randDrop(); next = randDrop();
   canDrop = true; gameOver = false; overTime = 0; lastWarnSec = -1;
   $('score').textContent = 0;
   updateShakeBtn(); drawNext();
@@ -380,8 +417,12 @@ $('shakeBtn').addEventListener('click', () => {
 });
 $('restartBtn').addEventListener('click', () => { if (!started) return; ensureAudio(); newGame(); });
 $('againBtn').addEventListener('click', () => { ensureAudio(); newGame(); });
-$('startBtn').addEventListener('click', () => {
-  ensureAudio(); started = true; $('startOv').classList.add('hidden'); newGame();
+document.querySelectorAll('.diff button').forEach(btn => btn.addEventListener('click', () => {
+  ensureAudio(); diff = btn.dataset.diff; store.set('kazuSuika_diff', diff); loadHigh();
+  started = true; $('startOv').classList.add('hidden'); newGame();
+}));
+$('changeDiffBtn').addEventListener('click', () => {
+  $('resultOv').classList.add('hidden'); started = false; $('startOv').classList.remove('hidden');
 });
 $('ruleBtn').addEventListener('click', () => $('ruleOv').classList.remove('hidden'));
 $('ruleClose').addEventListener('click', () => $('ruleOv').classList.add('hidden'));
@@ -406,7 +447,7 @@ function endGame(){
   gameOver = true;
   sfx.over();
   let isNew = false;
-  if (score > high){ high = score; store.set('kazuSuika_high', high); $('high').textContent = high; isNew = true; }
+  if (score > high){ high = score; store.set('kazuSuika_high_' + diff, high); $('high').textContent = high; isNew = true; }
   $('resScore').textContent = score + ' 点';
   $('resNew').style.display = isNew ? 'block' : 'none';
   $('resMax').textContent = maxValue || '-';
@@ -597,6 +638,7 @@ function loop(t){
 }
 
 fitCanvas();
+diff = store.get('kazuSuika_diff', 'normal'); if (!DIFFS[diff]) diff = 'normal'; loadHigh();
 current = randDrop(); next = randDrop(); drawNext();
 requestAnimationFrame(loop);
 })();
