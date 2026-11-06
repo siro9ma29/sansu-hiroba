@@ -219,7 +219,7 @@ function card(a, i) {
       <span class="icon" aria-hidden="true">${a.icon}</span>
       <span class="name">${a.name}</span>
       <span class="desc">${a.desc}</span>
-      <span class="unit">${a.grade === 0 ? "5さい〜" : a.grade + "年"}・${a.unit}</span>
+      <span class="unit">${a.grade === 0 ? "" : a.grade + "年・"}${a.unit}</span>
     </a>
     <button class="qr-btn" type="button" data-qr="${i}" aria-label="${a.name}のQRコードを表示">
       <span aria-hidden="true">▦</span> QR
@@ -232,7 +232,7 @@ function render(grade) {
   document.getElementById("list").innerHTML = grades
     .filter(g => grade === "all" || String(g) === grade)
     .map(g => `
-      <h2 class="section-title"><span class="badge" style="background:${COLORS[g]}">${g === 0 ? "5さい〜" : g + "年"}</span>${g === 0 ? "あたまのたいそう" : "さんすう"}</h2>
+      <h2 class="section-title">${g === 0 ? "🧠 あたまのたいそう" : `<span class="badge" style="background:${COLORS[g]}">${g}年</span>さんすう`}</h2>
       <div class="grid">${APPS.map((a, i) => a.grade === g ? card(a, i) : "").join("")}</div>
     `).join("");
 }
@@ -310,7 +310,7 @@ const pickEl = document.getElementById("pick");
 if (pick) {
   pickEl.innerHTML = `<span style="font-size:1.8rem">⭐</span>
     <div><strong>きょうのおすすめ</strong><br>
-    <a href="${appUrl(pick)}">${pick.icon} ${pick.name}（${pick.grade === 0 ? "5さい〜" : pick.grade + "年"}）</a></div>`;
+    <a href="${appUrl(pick)}">${pick.icon} ${pick.name}${pick.grade === 0 ? "" : "（" + pick.grade + "年）"}</a></div>`;
 } else {
   pickEl.classList.add("hidden");
 }
