@@ -18,6 +18,7 @@
     --g3: #9a6fd8;
     --g4: #3fa7d6;
     --g5: #59c27a;
+    --g6: #d4643c;
     --accent: #ffcf56;
   }
   * { box-sizing: border-box; }
@@ -146,6 +147,7 @@
     <button class="tab" data-grade="3" aria-pressed="false">3年</button>
     <button class="tab" data-grade="4" aria-pressed="false">4年</button>
     <button class="tab" data-grade="5" aria-pressed="false">5年</button>
+    <button class="tab" data-grade="6" aria-pressed="false">6年</button>
   </div>
 
   <div id="list"></div>
@@ -204,10 +206,12 @@ const APPS = [
 
   { grade: 5, icon: "🧺", name: "倍数コレクター",              unit: "倍数と約数",           desc: "倍数をみつけてあつめよう！",                    repo: "baisu-training" },
   { grade: 5, icon: "🔢", name: "小数のわり算",               unit: "小数のわり算",          desc: "小数点をうつして、わり算の筆算をしよう。",        repo: "syosu-warizan" },
+
+  { grade: 6, icon: "🔍", name: "算数ミステリー・ファイル",      unit: "速さ・比・文字と式",     desc: "しょうこカードを読んで、なぞをとこう！むずかしさも3だんかい。", repo: "sansu-mystery" },
 ];
 /* ===== 編集ここまで ===== */
 
-const COLORS = { 0: "var(--g0)", 1: "var(--g1)", 2: "var(--g2)", 3: "var(--g3)", 4: "var(--g4)", 5: "var(--g5)" };
+const COLORS = { 0: "var(--g0)", 1: "var(--g1)", 2: "var(--g2)", 3: "var(--g3)", 4: "var(--g4)", 5: "var(--g5)", 6: "var(--g6)" };
 
 function appUrl(a) {
   return BASE + a.repo + "/";
