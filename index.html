@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>さんすう れんしゅうひろば</title>
+<title>学習ひろば</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 <style>
   :root {
@@ -20,6 +20,7 @@
     --g5: #59c27a;
     --g6: #d4643c;
     --accent: #ffcf56;
+    --kokugo: #2f6f5e;
   }
   * { box-sizing: border-box; }
   body {
@@ -54,6 +55,9 @@
     padding: 10px 20px; border-radius: 999px; cursor: pointer; min-height: 48px;
   }
   .tab[aria-pressed="true"] { background: var(--ink); color: #fff; border-color: var(--ink); }
+  .tabs.grade .tab { font-size: .95rem; padding: 6px 16px; min-height: 42px; }
+  .empty { text-align: center; color: var(--sub); padding: 40px 0; }
+  .card .who { font-size: .8rem; font-weight: bold; color: var(--c); }
 
   .section-title {
     display: flex; align-items: center; gap: 10px;
@@ -131,17 +135,22 @@
 <body>
 
 <header>
-  <h1>🧮 さんすう れんしゅうひろば</h1>
-  <p>じぶんの学年をえらんで、れんしゅうしよう！</p>
+  <h1>📚 学習ひろば</h1>
+  <p>きょうかと 学年を えらんで、れんしゅうしよう！</p>
   <button class="portal-qr" id="portalQr" type="button">📱 このページのQRコード</button>
 </header>
 
 <main>
   <div class="pick" id="pick"></div>
 
-  <div class="tabs" role="group" aria-label="学年でしぼりこむ" style="margin-top:20px">
-    <button class="tab" data-grade="all" aria-pressed="true">ぜんぶ</button>
-    <button class="tab" data-grade="0" aria-pressed="false">🧠 あたまのたいそう</button>
+  <div class="tabs subject" role="group" aria-label="きょうかでしぼりこむ" style="margin-top:20px">
+    <button class="tab" data-subject="all" aria-pressed="true">ぜんぶ</button>
+    <button class="tab" data-subject="kokugo" aria-pressed="false">📖 こくご</button>
+    <button class="tab" data-subject="sansu" aria-pressed="false">🧮 さんすう</button>
+    <button class="tab" data-subject="atama" aria-pressed="false">🧠 あたまのたいそう</button>
+  </div>
+  <div class="tabs grade" role="group" aria-label="学年でしぼりこむ">
+    <button class="tab" data-grade="all" aria-pressed="true">ぜんぶの学年</button>
     <button class="tab" data-grade="1" aria-pressed="false">1年</button>
     <button class="tab" data-grade="2" aria-pressed="false">2年</button>
     <button class="tab" data-grade="3" aria-pressed="false">3年</button>
@@ -177,7 +186,10 @@ const UPDATED = "2026年11月";
 
 // 各アプリは https://siro9ma29.github.io/<repo>/ で公開されています。
 // アプリを追加するときは、そのリポジトリ名を repo に書いて1行足すだけでOK。
-// grade: 0 は「あたまのたいそう」（認知能力アプリ。5さい〜低学年、学年を問わない）。
+// subject（きょうか）："kokugo"＝こくご／"sansu"＝さんすう／"atama"＝あたまのたいそう（認知能力アプリ）
+// grade（学年）：1〜6 の数字。いくつかの学年で使えるときは [1,2,3,4,5,6] のように並べる。
+//   あたまのたいそうは grade: 0（5さい〜低学年。「1年」「2年」でしぼりこんだときにも出ます）
+// who: "teacher" をつけると「せんせいが電子黒板で使う」アプリとして表示します（児童のQRボタンは出しません）。
 // このリポジトリ内のフォルダに置いたアプリは repo に "sansu-hiroba/フォルダ名" と書く。
 const BASE = "https://siro9ma29.github.io/";
 
@@ -185,62 +197,102 @@ const BASE = "https://siro9ma29.github.io/";
 const PICK = "syosuten-idou";
 
 const APPS = [
-  { grade: 0, icon: "💡", name: "ひかる じゅんばん",          unit: "おぼえる ちから",        desc: "ひかった じゅんばんに タッチしよう！どうぶつの えが ヒントだよ。", repo: "sansu-hiroba/hikaru-junban" },
-  { grade: 0, icon: "🍎", name: "どっちが おおい？",          unit: "かずの かん",            desc: "いちばん おおい くだものを パッと みて タッチしよう！", repo: "sansu-hiroba/dochi-ooi" },
+  { subject: "atama", grade: 0, icon: "💡", name: "ひかる じゅんばん",          unit: "おぼえる ちから",        desc: "ひかった じゅんばんに タッチしよう！どうぶつの えが ヒントだよ。", repo: "sansu-hiroba/hikaru-junban" },
+  { subject: "atama", grade: 0, icon: "🍎", name: "どっちが おおい？",          unit: "かずの かん",            desc: "いちばん おおい くだものを パッと みて タッチしよう！", repo: "sansu-hiroba/dochi-ooi" },
 
-  { grade: 1, icon: "➕", name: "たすひくチャレンジ",          unit: "たし算・ひき算",        desc: "5・10のごうせいから、くりあがり・くりさがりまで。バッヂをあつめよう！", repo: "tasuhiku-challenge" },
-  { grade: 1, icon: "🍉", name: "かずスイカ",                unit: "5・10のごうせい／大きな数",  desc: "たして5・10・50…になるボールをくっつけて、1000をめざそう！", repo: "sansu-hiroba/kazu-suika" },
+  { subject: "kokugo", grade: [1,2,3,4,5,6], who: "teacher", icon: "📖", name: "よみとく5分", unit: "どっかいトレーニング", desc: "まいにち5ふん。きく→よむ→うつす→こたえる で、文を正しく よみとる ちからを つけよう！", repo: "sansu-hiroba/yomitoku5" },
 
-  { grade: 2, icon: "✖️", name: "九九チャレンジ",            unit: "かけ算九九",           desc: "九九をどんどんこたえて、じこベストをめざそう！", repo: "99-charenge" },
+  { subject: "sansu", grade: 1, icon: "➕", name: "たすひくチャレンジ",          unit: "たし算・ひき算",        desc: "5・10のごうせいから、くりあがり・くりさがりまで。バッヂをあつめよう！", repo: "tasuhiku-challenge" },
+  { subject: "sansu", grade: 1, icon: "🍉", name: "かずスイカ",                unit: "5・10のごうせい／大きな数",  desc: "たして5・10・50…になるボールをくっつけて、1000をめざそう！", repo: "sansu-hiroba/kazu-suika" },
 
-  { grade: 3, icon: "⚔️", name: "マス・モンスターズ",          unit: "かけ算のひっ算",        desc: "ひっ算をといて、モンスターにこうげき！くり上がりもしっかりれんしゅう。", repo: "kakezan-hissan" },
-  { grade: 3, icon: "💎", name: "スパッと！わり算マスター",    unit: "わり算",               desc: "わり算を スパッと 4たくで！1もん ミスで おわり。ほうせきを あつめて そだてよう！", repo: "supatto-warizan" },
+  { subject: "sansu", grade: 2, icon: "✖️", name: "九九チャレンジ",            unit: "かけ算九九",           desc: "九九をどんどんこたえて、じこベストをめざそう！", repo: "99-charenge" },
 
-  { grade: 4, icon: "📐", name: "分度器",                    unit: "角の大きさ",           desc: "分度器のめもりを正しく読む練習。",              repo: "bundoki" },
-  { grade: 4, icon: "🔟", name: "小数点のしくみ（10倍・1/10）", unit: "小数のしくみ",         desc: "10倍・1/10で小数点がどう動くか見てみよう。",     repo: "syosuten-idou" },
-  { grade: 4, icon: "📏", name: "小数のしくみ（数直線）",       unit: "小数のしくみ",         desc: "数直線のめもりから小数を読みとろう。",           repo: "syosu-sutyokusen" },
-  { grade: 4, icon: "≒",  name: "がい数",                    unit: "がい数とその計算",       desc: "四捨五入で、だいたいの数にする練習。",           repo: "gaisu" },
-  { grade: 4, icon: "➗", name: "わり算（わる数1けた）",       unit: "わり算の筆算",          desc: "1けたでわる筆算を、手じゅんどおりに。",          repo: "warizan" },
-  { grade: 4, icon: "➗", name: "わり算（わる数2けた以上）",    unit: "わり算の筆算",          desc: "かりの商をたてて、2けたでわる筆算にチャレンジ。", repo: "warizan2" },
-  { grade: 4, icon: "⚖️", name: "単位換算",                  unit: "かんたんな単位",         desc: "km・m・cm、kg・g などの単位をかえる練習。",      repo: "tanni-kansan" },
-  { grade: 4, icon: "🧮", name: "計算の順じょマスター",        unit: "計算のきまり",          desc: "（ ）・×÷・左から。どこから計算するかタップしよう！", repo: "keisan-junjo" },
+  { subject: "sansu", grade: 3, icon: "⚔️", name: "マス・モンスターズ",          unit: "かけ算のひっ算",        desc: "ひっ算をといて、モンスターにこうげき！くり上がりもしっかりれんしゅう。", repo: "kakezan-hissan" },
+  { subject: "sansu", grade: 3, icon: "💎", name: "スパッと！わり算マスター",    unit: "わり算",               desc: "わり算を スパッと 4たくで！1もん ミスで おわり。ほうせきを あつめて そだてよう！", repo: "supatto-warizan" },
 
-  { grade: 5, icon: "🧺", name: "倍数コレクター",              unit: "倍数と約数",           desc: "倍数をみつけてあつめよう！",                    repo: "baisu-training" },
-  { grade: 5, icon: "🧱", name: "公倍数さがし",                unit: "倍数と約数",           desc: "2つの数の倍数をならべて、公倍数を見つけよう！",     repo: "koubaisu-search" },
-  { grade: 5, icon: "🔢", name: "小数のわり算",               unit: "小数のわり算",          desc: "小数点をうつして、わり算の筆算をしよう。",        repo: "syosu-warizan" },
+  { subject: "sansu", grade: 4, icon: "📐", name: "分度器",                    unit: "角の大きさ",           desc: "分度器のめもりを正しく読む練習。",              repo: "bundoki" },
+  { subject: "sansu", grade: 4, icon: "🔟", name: "小数点のしくみ（10倍・1/10）", unit: "小数のしくみ",         desc: "10倍・1/10で小数点がどう動くか見てみよう。",     repo: "syosuten-idou" },
+  { subject: "sansu", grade: 4, icon: "📏", name: "小数のしくみ（数直線）",       unit: "小数のしくみ",         desc: "数直線のめもりから小数を読みとろう。",           repo: "syosu-sutyokusen" },
+  { subject: "sansu", grade: 4, icon: "≒",  name: "がい数",                    unit: "がい数とその計算",       desc: "四捨五入で、だいたいの数にする練習。",           repo: "gaisu" },
+  { subject: "sansu", grade: 4, icon: "➗", name: "わり算（わる数1けた）",       unit: "わり算の筆算",          desc: "1けたでわる筆算を、手じゅんどおりに。",          repo: "warizan" },
+  { subject: "sansu", grade: 4, icon: "➗", name: "わり算（わる数2けた以上）",    unit: "わり算の筆算",          desc: "かりの商をたてて、2けたでわる筆算にチャレンジ。", repo: "warizan2" },
+  { subject: "sansu", grade: 4, icon: "⚖️", name: "単位換算",                  unit: "かんたんな単位",         desc: "km・m・cm、kg・g などの単位をかえる練習。",      repo: "tanni-kansan" },
+  { subject: "sansu", grade: 4, icon: "🧮", name: "計算の順じょマスター",        unit: "計算のきまり",          desc: "（ ）・×÷・左から。どこから計算するかタップしよう！", repo: "keisan-junjo" },
 
-  { grade: 6, icon: "🔍", name: "算数ミステリー・ファイル",      unit: "速さ・比・文字と式",     desc: "しょうこカードを読んで、なぞをとこう！むずかしさも3だんかい。", repo: "sansu-mystery" },
+  { subject: "sansu", grade: 5, icon: "🧺", name: "倍数コレクター",              unit: "倍数と約数",           desc: "倍数をみつけてあつめよう！",                    repo: "baisu-training" },
+  { subject: "sansu", grade: 5, icon: "🧱", name: "公倍数さがし",                unit: "倍数と約数",           desc: "2つの数の倍数をならべて、公倍数を見つけよう！",     repo: "koubaisu-search" },
+  { subject: "sansu", grade: 5, icon: "🔢", name: "小数のわり算",               unit: "小数のわり算",          desc: "小数点をうつして、わり算の筆算をしよう。",        repo: "syosu-warizan" },
+
+  { subject: "sansu", grade: 6, icon: "🔍", name: "算数ミステリー・ファイル",      unit: "速さ・比・文字と式",     desc: "しょうこカードを読んで、なぞをとこう！むずかしさも3だんかい。", repo: "sansu-mystery" },
 ];
 /* ===== 編集ここまで ===== */
 
 const COLORS = { 0: "var(--g0)", 1: "var(--g1)", 2: "var(--g2)", 3: "var(--g3)", 4: "var(--g4)", 5: "var(--g5)", 6: "var(--g6)" };
+const SUBJECTS = {
+  atama:  { name: "あたまのたいそう", icon: "🧠", color: "var(--g0)" },
+  kokugo: { name: "こくご",          icon: "📖", color: "var(--kokugo)" },
+  sansu:  { name: "さんすう",        icon: "🧮", color: "var(--accent)" },
+};
+const SUBJECT_ORDER = ["atama", "kokugo", "sansu"];
 
 function appUrl(a) {
   return BASE + a.repo + "/";
 }
+function gradeList(a) {
+  if (Array.isArray(a.grade)) return a.grade;
+  if (a.grade === 0) return [1, 2];               // あたまのたいそう：低学年でも表示
+  return [a.grade];
+}
+function gradeLabel(a) {
+  if (a.grade === 0) return "5さい〜低学年";
+  if (Array.isArray(a.grade)) {
+    const g = [...a.grade].sort((x, y) => x - y);
+    return g.length === 1 ? g[0] + "年" : `${g[0]}〜${g[g.length - 1]}年`;
+  }
+  return a.grade + "年";
+}
+function colorOf(a) {
+  return typeof a.grade === "number" && a.grade !== 0 ? COLORS[a.grade] : SUBJECTS[a.subject].color;
+}
 
 function card(a, i) {
-  return `<div class="card" style="--c:${COLORS[a.grade] || "var(--accent)"}">
+  return `<div class="card" style="--c:${colorOf(a)}">
     <a class="card-link" href="${appUrl(a)}">
       <span class="icon" aria-hidden="true">${a.icon}</span>
       <span class="name">${a.name}</span>
       <span class="desc">${a.desc}</span>
-      <span class="unit">${a.grade === 0 ? "" : a.grade + "年・"}${a.unit}</span>
+      ${a.who === "teacher" ? `<span class="who">👩‍🏫 せんせいが 電子黒板で つかうよ</span>` : ""}
+      <span class="unit">${a.grade === 0 ? "" : gradeLabel(a) + "・"}${a.unit}</span>
     </a>
-    <button class="qr-btn" type="button" data-qr="${i}" aria-label="${a.name}のQRコードを表示">
+    ${a.who === "teacher" ? "" : `<button class="qr-btn" type="button" data-qr="${i}" aria-label="${a.name}のQRコードを表示">
       <span aria-hidden="true">▦</span> QR
-    </button>
+    </button>`}
   </div>`;
 }
 
-function render(grade) {
-  const grades = [...new Set(APPS.map(a => a.grade))].sort((x, y) => x - y);
-  document.getElementById("list").innerHTML = grades
-    .filter(g => grade === "all" || String(g) === grade)
-    .map(g => `
-      <h2 class="section-title">${g === 0 ? "🧠 あたまのたいそう" : `<span class="badge" style="background:${COLORS[g]}">${g}年</span>さんすう`}</h2>
-      <div class="grid">${APPS.map((a, i) => a.grade === g ? card(a, i) : "").join("")}</div>
-    `).join("");
+let curSubject = "all", curGrade = "all";
+
+function render() {
+  const hit = APPS.map((a, i) => ({ a, i })).filter(({ a }) =>
+    (curSubject === "all" || a.subject === curSubject) &&
+    (curGrade === "all" || gradeList(a).includes(+curGrade)));
+  const grid = list => `<div class="grid">${list.map(({ a, i }) => card(a, i)).join("")}</div>`;
+  let html = "";
+  for (const s of SUBJECT_ORDER) {
+    const list = hit.filter(({ a }) => a.subject === s);
+    if (!list.length) continue;
+    if (s === "sansu") {
+      // さんすうは学年ごとに見出しをつける
+      const grades = [...new Set(list.map(({ a }) => a.grade))].sort((x, y) => x - y);
+      for (const g of grades) {
+        html += `<h2 class="section-title"><span class="badge" style="background:${COLORS[g]}">${g}年</span>さんすう</h2>`
+             + grid(list.filter(({ a }) => a.grade === g));
+      }
+    } else {
+      html += `<h2 class="section-title">${SUBJECTS[s].icon} ${SUBJECTS[s].name}</h2>` + grid(list);
+    }
+  }
+  document.getElementById("list").innerHTML = html || `<p class="empty">この くみあわせの アプリは まだ ありません</p>`;
 }
 
 /* ===== QR 表示 ===== */
@@ -248,16 +300,16 @@ const overlay = document.getElementById("qrOverlay");
 const qrBox = document.getElementById("qrBox");
 let lastFocus = null;
 
-function showQr({ title, url, grade }) {
+function showQr({ title, url, label, color }) {
   lastFocus = document.activeElement;
   document.getElementById("qrTitle").textContent = title;
   document.getElementById("qrUrl").textContent = url;
   const g = document.getElementById("qrGrade");
-  if (grade) {
-    g.textContent = grade + "年";
-    g.style.background = COLORS[grade];
+  if (label) {
+    g.textContent = label;
+    g.style.background = color;
     g.classList.remove("hidden");
-    overlay.style.setProperty("--c", COLORS[grade]);
+    overlay.style.setProperty("--c", color);
   } else {
     g.classList.add("hidden");
     overlay.style.setProperty("--c", "var(--ink)");
@@ -286,11 +338,14 @@ document.getElementById("list").addEventListener("click", e => {
   const btn = e.target.closest("[data-qr]");
   if (!btn) return;
   const a = APPS[+btn.dataset.qr];
-  showQr({ title: `${a.icon} ${a.name}`, url: appUrl(a), grade: a.grade });
+  showQr({
+    title: `${a.icon} ${a.name}`, url: appUrl(a),
+    label: a.grade === 0 ? SUBJECTS[a.subject].name : gradeLabel(a), color: colorOf(a),
+  });
 });
 
 document.getElementById("portalQr").addEventListener("click", () => {
-  showQr({ title: "🧮 さんすう れんしゅうひろば", url: new URL("./", location.href).href });
+  showQr({ title: "📚 学習ひろば", url: new URL("./", location.href).href });
 });
 
 document.getElementById("qrClose").addEventListener("click", closeQr);
@@ -303,26 +358,30 @@ document.addEventListener("keydown", e => {
 });
 
 /* ===== 初期表示 ===== */
-document.querySelectorAll(".tab").forEach(btn => {
-  btn.addEventListener("click", () => {
-    document.querySelectorAll(".tab").forEach(b => b.setAttribute("aria-pressed", "false"));
+function setupTabs(selector, attr, set) {
+  const btns = document.querySelectorAll(selector + " .tab");
+  btns.forEach(btn => btn.addEventListener("click", () => {
+    btns.forEach(b => b.setAttribute("aria-pressed", "false"));
     btn.setAttribute("aria-pressed", "true");
-    render(btn.dataset.grade);
-  });
-});
+    set(btn.dataset[attr]);
+    render();
+  }));
+}
+setupTabs(".tabs.subject", "subject", v => curSubject = v);
+setupTabs(".tabs.grade", "grade", v => curGrade = v);
 
 const pick = APPS.find(a => a.repo === PICK);
 const pickEl = document.getElementById("pick");
 if (pick) {
   pickEl.innerHTML = `<span style="font-size:1.8rem">⭐</span>
     <div><strong>きょうのおすすめ</strong><br>
-    <a href="${appUrl(pick)}">${pick.icon} ${pick.name}${pick.grade === 0 ? "" : "（" + pick.grade + "年）"}</a></div>`;
+    <a href="${appUrl(pick)}">${pick.icon} ${pick.name}${pick.grade === 0 ? "" : "（" + gradeLabel(pick) + "）"}</a></div>`;
 } else {
   pickEl.classList.add("hidden");
 }
 
 document.getElementById("updated").textContent = UPDATED;
-render("all");
+render();
 </script>
 </body>
 </html>
